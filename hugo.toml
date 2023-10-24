@@ -1,0 +1,33 @@
+baseURL = 'https://catnekaise.github.io/'
+languageCode = 'en-us'
+title = 'Catnekaise'
+theme = 'm10c'
+publishDir = "docs"
+
+[params]
+author = 'catnekaise'
+description = "."
+AppHeaderTitle = "catnekaise"
+RepoBaseUrl = "https://github.com/catnekaise/catnekaise.github.io"
+
+[[menu.main]]
+identifier = "about"
+name = "About"
+url = "/about"
+weeight = 20
+
+[[menu.main]]
+identifier = "home"
+name = "Home"
+url = "/"
+weight = 10
+
+[[params.social]]
+icon = "github"
+name = "catnekaise"
+url = "https://github.com/catnekaise"
+
+[[params.social]]
+icon = "rss"
+name = "RSS"
+url = "index.xml"
