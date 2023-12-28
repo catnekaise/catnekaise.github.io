@@ -433,7 +433,7 @@ Use this to trust that a specific entrypoint account have correctly authenticate
 - Set `aws:requestTag/tag_name` to match `${aws:principalTag/tag_name}` to ensure that tags/claims are not changed when performing `AssumeRole` (if passing existing tags).
 - Use `aws:tagKeys` to restrict which session tags can be set.
 
-```json5
+```json
 {
   "Version": "2012-10-17",
   "Statement": [
@@ -476,7 +476,7 @@ Use this to trust that a specific entrypoint account have correctly authenticate
 ##### Role Chaining - Alternative for Permissions
 Granting the permissions below to roles in an entrypoint account makes it so that no changes are required when additional workload accounts are integrated. The conditions are used so prevent other roles that trusts the same entrypoint account from being assumable.
 
-```json5
+```json
 {
   "Version": "2012-10-17",
   "Statement": [

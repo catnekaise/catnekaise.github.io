@@ -554,83 +554,83 @@ Note It&rsquo;s very important to limit which entities in GitHub Actions are all
 <li>Set <code>aws:requestTag/tag_name</code> to match <code>${aws:principalTag/tag_name}</code> to ensure that tags/claims are not changed when performing <code>AssumeRole</code> (if passing existing tags).</li>
 <li>Use <code>aws:tagKeys</code> to restrict which session tags can be set.</li>
 </ul>
-<pre tabindex="0"><code class="language-json5" data-lang="json5">{
-  &#34;Version&#34;: &#34;2012-10-17&#34;,
-  &#34;Statement&#34;: [
-    {
-      &#34;Effect&#34;: &#34;Allow&#34;,
-      &#34;Principal&#34;: {
-        &#34;AWS&#34;: &#34;arn:aws:iam::111111111111:root&#34;
-      },
-      &#34;Action&#34;: [
-        &#34;sts:AssumeRole&#34;,
-        &#34;sts:TagSession&#34;
-      ],
-      &#34;Condition&#34;: {
-        &#34;StringEquals&#34;: {
-          // Crucial that the account 111111111111 only uses Cognito Identity for GitHub Actions OIDC and nothing else
-          &#34;aws:FederatedProvider&#34;: &#34;cognito-identity.amazonaws.com&#34;,
-          &#34;aws:PrincipalTag/environment&#34;: &#34;prod&#34;,
-          &#34;aws:RequestTag/repository&#34;: &#34;${aws:principalTag/repository}&#34;,
-          &#34;aws:RequestTag/job_workflow_ref&#34;: &#34;${aws:principalTag/job_workflow_ref}&#34;,
-          &#34;aws:RequestTag/environment&#34;: &#34;${aws:principalTag/environment}&#34;
-        },
-        &#34;ForAllValues:StringEquals&#34;: {
-          &#34;aws:TagKeys&#34;: [
-            &#34;repository&#34;,
-            &#34;environment&#34;,
-            &#34;job_workflow_ref&#34;
-          ]
-        },
-        &#34;StringLike&#34;: {
-          &#34;aws:PrincipalTag/repository&#34;: [
-            &#34;catnekaise/example.*&#34;
-          ]
-        }
-      }
-    }
-  ]
-}
-</code></pre><h5 id="role-chaining---alternative-for-permissions">Role Chaining - Alternative for Permissions</h5>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-json" data-lang="json"><span style="display:flex;"><span>{
+</span></span><span style="display:flex;"><span>  <span style="color:#f92672">&#34;Version&#34;</span>: <span style="color:#e6db74">&#34;2012-10-17&#34;</span>,
+</span></span><span style="display:flex;"><span>  <span style="color:#f92672">&#34;Statement&#34;</span>: [
+</span></span><span style="display:flex;"><span>    {
+</span></span><span style="display:flex;"><span>      <span style="color:#f92672">&#34;Effect&#34;</span>: <span style="color:#e6db74">&#34;Allow&#34;</span>,
+</span></span><span style="display:flex;"><span>      <span style="color:#f92672">&#34;Principal&#34;</span>: {
+</span></span><span style="display:flex;"><span>        <span style="color:#f92672">&#34;AWS&#34;</span>: <span style="color:#e6db74">&#34;arn:aws:iam::111111111111:root&#34;</span>
+</span></span><span style="display:flex;"><span>      },
+</span></span><span style="display:flex;"><span>      <span style="color:#f92672">&#34;Action&#34;</span>: [
+</span></span><span style="display:flex;"><span>        <span style="color:#e6db74">&#34;sts:AssumeRole&#34;</span>,
+</span></span><span style="display:flex;"><span>        <span style="color:#e6db74">&#34;sts:TagSession&#34;</span>
+</span></span><span style="display:flex;"><span>      ],
+</span></span><span style="display:flex;"><span>      <span style="color:#f92672">&#34;Condition&#34;</span>: {
+</span></span><span style="display:flex;"><span>        <span style="color:#f92672">&#34;StringEquals&#34;</span>: {
+</span></span><span style="display:flex;"><span>          <span style="color:#75715e">// Crucial that the account 111111111111 only uses Cognito Identity for GitHub Actions OIDC and nothing else
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>          <span style="color:#f92672">&#34;aws:FederatedProvider&#34;</span>: <span style="color:#e6db74">&#34;cognito-identity.amazonaws.com&#34;</span>,
+</span></span><span style="display:flex;"><span>          <span style="color:#f92672">&#34;aws:PrincipalTag/environment&#34;</span>: <span style="color:#e6db74">&#34;prod&#34;</span>,
+</span></span><span style="display:flex;"><span>          <span style="color:#f92672">&#34;aws:RequestTag/repository&#34;</span>: <span style="color:#e6db74">&#34;${aws:principalTag/repository}&#34;</span>,
+</span></span><span style="display:flex;"><span>          <span style="color:#f92672">&#34;aws:RequestTag/job_workflow_ref&#34;</span>: <span style="color:#e6db74">&#34;${aws:principalTag/job_workflow_ref}&#34;</span>,
+</span></span><span style="display:flex;"><span>          <span style="color:#f92672">&#34;aws:RequestTag/environment&#34;</span>: <span style="color:#e6db74">&#34;${aws:principalTag/environment}&#34;</span>
+</span></span><span style="display:flex;"><span>        },
+</span></span><span style="display:flex;"><span>        <span style="color:#f92672">&#34;ForAllValues:StringEquals&#34;</span>: {
+</span></span><span style="display:flex;"><span>          <span style="color:#f92672">&#34;aws:TagKeys&#34;</span>: [
+</span></span><span style="display:flex;"><span>            <span style="color:#e6db74">&#34;repository&#34;</span>,
+</span></span><span style="display:flex;"><span>            <span style="color:#e6db74">&#34;environment&#34;</span>,
+</span></span><span style="display:flex;"><span>            <span style="color:#e6db74">&#34;job_workflow_ref&#34;</span>
+</span></span><span style="display:flex;"><span>          ]
+</span></span><span style="display:flex;"><span>        },
+</span></span><span style="display:flex;"><span>        <span style="color:#f92672">&#34;StringLike&#34;</span>: {
+</span></span><span style="display:flex;"><span>          <span style="color:#f92672">&#34;aws:PrincipalTag/repository&#34;</span>: [
+</span></span><span style="display:flex;"><span>            <span style="color:#e6db74">&#34;catnekaise/example.*&#34;</span>
+</span></span><span style="display:flex;"><span>          ]
+</span></span><span style="display:flex;"><span>        }
+</span></span><span style="display:flex;"><span>      }
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>  ]
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h5 id="role-chaining---alternative-for-permissions">Role Chaining - Alternative for Permissions</h5>
 <p>Granting the permissions below to roles in an entrypoint account makes it so that no changes are required when additional workload accounts are integrated. The conditions are used so prevent other roles that trusts the same entrypoint account from being assumable.</p>
-<pre tabindex="0"><code class="language-json5" data-lang="json5">{
-  &#34;Version&#34;: &#34;2012-10-17&#34;,
-  &#34;Statement&#34;: [
-    {
-      // Include when passing claims
-      &#34;Effect&#34;: &#34;Allow&#34;,
-      &#34;Action&#34;: &#34;sts:TagSession&#34;,
-      &#34;Resource&#34;: &#34;*&#34;
-    },
-    {
-      &#34;Effect&#34;: &#34;Allow&#34;,
-      &#34;Action&#34;: &#34;sts:AssumeRole&#34;,
-      // Role Path to limit assuming roles to those under this path
-      &#34;Resource&#34;: &#34;arn:aws:iam::*:role/github-actions/*&#34;,
-      &#34;Condition&#34;: {
-        &#34;StringEquals&#34;: {
-          // ResourceTag to limit that roles being assumed have this tag
-          &#34;aws:ResourceTag/tag1&#34;: &#34;someValue&#34;,
-          // Shall not be able to assume roles in a different organization
-          &#34;aws:ResourceOrgID&#34;: &#34;o-example&#34;
-        },
-        &#34;StringNotEquals&#34;: {
-          // Shall not be allowed to assume roles in these accounts
-          &#34;aws:ResourceAccount&#34;: [
-            &#34;111111111111&#34;
-          ]
-        },
-        &#34;ForAnyValue:StringLike&#34;: {
-          // Optionally limit to accounts in organization path(s) below
-          &#34;aws:ResourceOrgPaths&#34;: [
-            &#34;o-example/r-ab12/ou-ab12-11111111/*&#34;
-          ]
-        }
-      }
-    }
-  ]
-}
-</code></pre><h5 id="assume-role">Assume Role</h5>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-json" data-lang="json"><span style="display:flex;"><span>{
+</span></span><span style="display:flex;"><span>  <span style="color:#f92672">&#34;Version&#34;</span>: <span style="color:#e6db74">&#34;2012-10-17&#34;</span>,
+</span></span><span style="display:flex;"><span>  <span style="color:#f92672">&#34;Statement&#34;</span>: [
+</span></span><span style="display:flex;"><span>    {
+</span></span><span style="display:flex;"><span>      <span style="color:#75715e">// Include when passing claims
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>      <span style="color:#f92672">&#34;Effect&#34;</span>: <span style="color:#e6db74">&#34;Allow&#34;</span>,
+</span></span><span style="display:flex;"><span>      <span style="color:#f92672">&#34;Action&#34;</span>: <span style="color:#e6db74">&#34;sts:TagSession&#34;</span>,
+</span></span><span style="display:flex;"><span>      <span style="color:#f92672">&#34;Resource&#34;</span>: <span style="color:#e6db74">&#34;*&#34;</span>
+</span></span><span style="display:flex;"><span>    },
+</span></span><span style="display:flex;"><span>    {
+</span></span><span style="display:flex;"><span>      <span style="color:#f92672">&#34;Effect&#34;</span>: <span style="color:#e6db74">&#34;Allow&#34;</span>,
+</span></span><span style="display:flex;"><span>      <span style="color:#f92672">&#34;Action&#34;</span>: <span style="color:#e6db74">&#34;sts:AssumeRole&#34;</span>,
+</span></span><span style="display:flex;"><span>      <span style="color:#75715e">// Role Path to limit assuming roles to those under this path
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>      <span style="color:#f92672">&#34;Resource&#34;</span>: <span style="color:#e6db74">&#34;arn:aws:iam::*:role/github-actions/*&#34;</span>,
+</span></span><span style="display:flex;"><span>      <span style="color:#f92672">&#34;Condition&#34;</span>: {
+</span></span><span style="display:flex;"><span>        <span style="color:#f92672">&#34;StringEquals&#34;</span>: {
+</span></span><span style="display:flex;"><span>          <span style="color:#75715e">// ResourceTag to limit that roles being assumed have this tag
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>          <span style="color:#f92672">&#34;aws:ResourceTag/tag1&#34;</span>: <span style="color:#e6db74">&#34;someValue&#34;</span>,
+</span></span><span style="display:flex;"><span>          <span style="color:#75715e">// Shall not be able to assume roles in a different organization
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>          <span style="color:#f92672">&#34;aws:ResourceOrgID&#34;</span>: <span style="color:#e6db74">&#34;o-example&#34;</span>
+</span></span><span style="display:flex;"><span>        },
+</span></span><span style="display:flex;"><span>        <span style="color:#f92672">&#34;StringNotEquals&#34;</span>: {
+</span></span><span style="display:flex;"><span>          <span style="color:#75715e">// Shall not be allowed to assume roles in these accounts
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>          <span style="color:#f92672">&#34;aws:ResourceAccount&#34;</span>: [
+</span></span><span style="display:flex;"><span>            <span style="color:#e6db74">&#34;111111111111&#34;</span>
+</span></span><span style="display:flex;"><span>          ]
+</span></span><span style="display:flex;"><span>        },
+</span></span><span style="display:flex;"><span>        <span style="color:#f92672">&#34;ForAnyValue:StringLike&#34;</span>: {
+</span></span><span style="display:flex;"><span>          <span style="color:#75715e">// Optionally limit to accounts in organization path(s) below
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>          <span style="color:#f92672">&#34;aws:ResourceOrgPaths&#34;</span>: [
+</span></span><span style="display:flex;"><span>            <span style="color:#e6db74">&#34;o-example/r-ab12/ou-ab12-11111111/*&#34;</span>
+</span></span><span style="display:flex;"><span>          ]
+</span></span><span style="display:flex;"><span>        }
+</span></span><span style="display:flex;"><span>      }
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>  ]
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h5 id="assume-role">Assume Role</h5>
 <p>Inside a GitHub Actions workflow it would look similar to this when using the AWS CLI directly.</p>
 <div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>aws sts assume-role <span style="color:#ae81ff">\
 </span></span></span><span style="display:flex;"><span><span style="color:#ae81ff"></span>--role-arn arn:aws:iam::222222222222:role/chained-gha-role <span style="color:#ae81ff">\
