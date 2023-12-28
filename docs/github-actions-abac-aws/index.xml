@@ -6,38 +6,33 @@
     <description>Recent content in Github-actions-abac-aws on Catnekaise</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en-us</language>
-    <lastBuildDate>Tue, 24 Oct 2023 00:00:00 +0000</lastBuildDate><atom:link href="https://catnekaise.github.io/github-actions-abac-aws/index.xml" rel="self" type="application/rss+xml" />
+    <lastBuildDate>Tue, 24 Oct 2023 00:00:00 +0000</lastBuildDate>
+    <atom:link href="https://catnekaise.github.io/github-actions-abac-aws/index.xml" rel="self" type="application/rss+xml" />
     <item>
       <title>Cognito Identity in GitHub Actions</title>
       <link>https://catnekaise.github.io/github-actions-abac-aws/cognito-identity/</link>
       <pubDate>Tue, 24 Oct 2023 00:00:00 +0000</pubDate>
-      
       <guid>https://catnekaise.github.io/github-actions-abac-aws/cognito-identity/</guid>
       <description>We&amp;rsquo;ll look at how most authentication with AWS from GitHub Actions is accomplished today and how it compares to using Cognito Identity.
 GitHub Actions OIDC Access Token When we authenticate with AWS STS using the GitHub Actions OIDC Access Token as illustrated here, we do it with an access token having claims similar to below. (Full access token can be viewed here.)
 { &amp;#34;sub&amp;#34;: &amp;#34;repo:catnekaise/example-repo:environment:dev&amp;#34;, &amp;#34;aud&amp;#34;: &amp;#34;sts.amazonaws.com&amp;#34;, &amp;#34;environment&amp;#34;: &amp;#34;dev&amp;#34;, &amp;#34;ref&amp;#34;: &amp;#34;refs/heads/main&amp;#34;, &amp;#34;sha&amp;#34;: &amp;#34;example-sha&amp;#34;, &amp;#34;repository&amp;#34;: &amp;#34;catnekaise/example-repo&amp;#34;, &amp;#34;repository_owner&amp;#34;: &amp;#34;catnekaise&amp;#34;, &amp;#34;repository_visibility&amp;#34;: &amp;#34;private&amp;#34;, &amp;#34;repository_id&amp;#34;: &amp;#34;2&amp;#34;, &amp;#34;run_id&amp;#34;: &amp;#34;example-run-id&amp;#34;, &amp;#34;run_number&amp;#34;: &amp;#34;4&amp;#34;, &amp;#34;runner_environment&amp;#34;: &amp;#34;github-hosted&amp;#34;, &amp;#34;actor&amp;#34;: &amp;#34;djonser&amp;#34;, &amp;#34;event_name&amp;#34;: &amp;#34;workflow_dispatch&amp;#34;, &amp;#34;ref_type&amp;#34;: &amp;#34;branch&amp;#34;, &amp;#34;job_workflow_ref&amp;#34;: &amp;#34;catnekaise/example-repo/.</description>
     </item>
-    
     <item>
       <title>GitHub Actions ABAC in AWS - Detailed Explanation</title>
       <link>https://catnekaise.github.io/github-actions-abac-aws/detailed-explanation/</link>
       <pubDate>Tue, 24 Oct 2023 00:00:00 +0000</pubDate>
-      
       <guid>https://catnekaise.github.io/github-actions-abac-aws/detailed-explanation/</guid>
       <description>This is an article containing contextual/behavioural information related to GitHub Actions, Amazon Cognito Identity, AWS IAM, AWS STS and their interaction together. This could help when troubleshooting something that is not working or help you understand how a specific part in all of this works.
 This article is not a setup guide nor a starting point. Have a look here if you are just starting out with this topic.
 Note It&amp;rsquo;s very important to limit which entities in GitHub Actions are allowed to assume roles in your AWS Account(s).</description>
     </item>
-    
     <item>
       <title>Setup Amazon Cognito Identity for GitHub Actions - Enhanced AuthFlow</title>
       <link>https://catnekaise.github.io/github-actions-abac-aws/setup-using-aws-console/</link>
       <pubDate>Tue, 24 Oct 2023 00:00:00 +0000</pubDate>
-      
       <guid>https://catnekaise.github.io/github-actions-abac-aws/setup-using-aws-console/</guid>
       <description>This guide will create an Amazon Cognito Identity Pool that allows GitHub Actions to authenticate using OpenID Connect. We&amp;rsquo;ll be using the Enhanched (Simplified) AuthFlow. We will also create a S3 Bucket so that we can test the attribute-based access control (ABAC) from the GitHub Actions workflow.
 Note It&amp;rsquo;s very important to limit which entities in GitHub Actions are allowed to assume roles in your AWS Account(s). Misconfiguration in either AWS IAM Role trust policies or a Cognito Identity Pool could lead to every organization and user in GitHub being allowed access to your AWS resources from GitHub Actions.</description>
     </item>
-    
   </channel>
 </rss>

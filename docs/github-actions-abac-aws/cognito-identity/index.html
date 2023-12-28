@@ -4,7 +4,7 @@
     <title>Cognito Identity in GitHub Actions // Catnekaise</title>
     <link rel="shortcut icon" href="/favicon.ico" />
     <meta charset="utf-8" />
-    <meta name="generator" content="Hugo 0.119.0">
+    <meta name="generator" content="Hugo 0.120.4">
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="author" content="catnekaise" />
     <meta name="description" content="" />
@@ -25,6 +25,7 @@ GitHub Actions OIDC Access Token When we authenticate with AWS STS using the Git
 <meta property="og:url" content="https://catnekaise.github.io/github-actions-abac-aws/cognito-identity/" /><meta property="article:section" content="github-actions-abac-aws" />
 <meta property="article:published_time" content="2023-10-24T00:00:00+00:00" />
 <meta property="article:modified_time" content="2023-10-24T00:00:00+00:00" />
+
 
 
   </head>
@@ -98,7 +99,7 @@ GitHub Actions OIDC Access Token When we authenticate with AWS STS using the Git
     <div class="post-content">
       <p>We&rsquo;ll look at how most authentication with AWS from GitHub Actions is accomplished today and how it compares to using Cognito Identity.</p>
 <h3 id="github-actions-oidc-access-token">GitHub Actions OIDC Access Token</h3>
-<p>When we authenticate with <code>AWS STS</code> using the <code>GitHub Actions OIDC Access Token</code> as illustrated <a href="https://docs.github.com/en/actions/deployment/security-hardening-your-deployments/configuring-openid-connect-in-amazon-web-services/" target="_blank" rel="noopener">here</a>, we do it with an access token having claims similar to below. (Full access token can be viewed <a href="https://docs.github.com/en/actions/deployment/security-hardening-your-deployments/about-security-hardening-with-openid-connect/" target="_blank" rel="noopener">here</a>.)</p>
+<p>When we authenticate with <code>AWS STS</code> using the <code>GitHub Actions OIDC Access Token</code> as illustrated <a href="https://docs.github.com/en/actions/deployment/security-hardening-your-deployments/configuring-openid-connect-in-amazon-web-services" target="_blank" rel="noopener">here</a>, we do it with an access token having claims similar to below. (Full access token can be viewed <a href="https://docs.github.com/en/actions/deployment/security-hardening-your-deployments/about-security-hardening-with-openid-connect" target="_blank" rel="noopener">here</a>.)</p>
 <div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-json" data-lang="json"><span style="display:flex;"><span>{
 </span></span><span style="display:flex;"><span>  <span style="color:#f92672">&#34;sub&#34;</span>: <span style="color:#e6db74">&#34;repo:catnekaise/example-repo:environment:dev&#34;</span>,
 </span></span><span style="display:flex;"><span>  <span style="color:#f92672">&#34;aud&#34;</span>: <span style="color:#e6db74">&#34;sts.amazonaws.com&#34;</span>,
@@ -119,7 +120,7 @@ GitHub Actions OIDC Access Token When we authenticate with AWS STS using the Git
 </span></span><span style="display:flex;"><span>  <span style="color:#f92672">&#34;iss&#34;</span>: <span style="color:#e6db74">&#34;https://token.actions.githubusercontent.com&#34;</span>
 </span></span><span style="display:flex;"><span>}
 </span></span></code></pre></div><h3 id="trust-policy---github-actions-access-token">Trust Policy - GitHub Actions Access Token</h3>
-<p>When we create trust policies for our AWS IAM Roles we can only match against the <code>aud</code> and <code>sub</code> claims of the GitHub Actions OIDC access token. It&rsquo;s possible to <a href="https://docs.github.com/en/actions/deployment/security-hardening-your-deployments/about-security-hardening-with-openid-connect#customizing-the-token-claims/" target="_blank" rel="noopener">customize</a> the <code>sub</code> claim by concatenate multiple claims  into the <code>sub</code> claim. Doing so can create a complex string that we now have match in our trust policies.</p>
+<p>When we create trust policies for our AWS IAM Roles we can only match against the <code>aud</code> and <code>sub</code> claims of the GitHub Actions OIDC access token. It&rsquo;s possible to <a href="https://docs.github.com/en/actions/deployment/security-hardening-your-deployments/about-security-hardening-with-openid-connect#customizing-the-token-claims" target="_blank" rel="noopener">customize</a> the <code>sub</code> claim by concatenate multiple claims  into the <code>sub</code> claim. Doing so can create a complex string that we now have match in our trust policies.</p>
 <p>A trust policy on an AWS IAM Role could look similar to below after we have customized the <code>sub</code> claim. The example below attempts to match for <code>repo</code> (repository), <code>context</code> (environment), <code>job_workflow_ref</code> and <code>runner_environment</code>.</p>
 <div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-json" data-lang="json"><span style="display:flex;"><span>{
 </span></span><span style="display:flex;"><span>  <span style="color:#f92672">&#34;Version&#34;</span>: <span style="color:#e6db74">&#34;2012-10-17&#34;</span>,
@@ -215,24 +216,24 @@ GitHub Actions OIDC Access Token When we authenticate with AWS STS using the Git
 </span></span><span style="display:flex;"><span>  ]
 </span></span><span style="display:flex;"><span>}
 </span></span></code></pre></div><h2 id="using-pictures">Using Pictures</h2>
-<p>In all scenarios we execute a workflow with the permission <code>id-token</code> set to <code>write</code> and begin by creating a GitHub Actions OIDC Access token as explained <a href="https://docs.github.com/en/actions/deployment/security-hardening-your-deployments/about-security-hardening-with-openid-connect#updating-your-actions-for-oidc/" target="_blank" rel="noopener">here</a>. (These details may have been hidden from you if you have used <a href="https://github.com/aws-actions/configure-aws-credentials/" target="_blank" rel="noopener">aws-actions/configure-aws-credentials</a>.)</p>
+<p>In all scenarios we execute a workflow with the permission <code>id-token</code> set to <code>write</code> and begin by creating a GitHub Actions OIDC Access token as explained <a href="https://docs.github.com/en/actions/deployment/security-hardening-your-deployments/about-security-hardening-with-openid-connect#updating-your-actions-for-oidc" target="_blank" rel="noopener">here</a>. (These details may have been hidden from you if you have used <a href="https://github.com/aws-actions/configure-aws-credentials" target="_blank" rel="noopener">aws-actions/configure-aws-credentials</a>.)</p>
 <h3 id="github-actions-and-aws-sts">GitHub Actions and AWS STS</h3>
-<p>This is what most of are using today as detailed <a href="https://docs.github.com/en/actions/deployment/security-hardening-your-deployments/configuring-openid-connect-in-amazon-web-services/" target="_blank" rel="noopener">here</a>.</p>
+<p>This is what most of are using today as detailed <a href="https://docs.github.com/en/actions/deployment/security-hardening-your-deployments/configuring-openid-connect-in-amazon-web-services" target="_blank" rel="noopener">here</a>.</p>
 <p><img src="/github-actions-abac-aws/images/gha-aws-sts.png" alt=""></p>
 <h3 id="github-actions-and-cognito-identity-basic-classic-authflow">GitHub Actions and Cognito Identity Basic (Classic) AuthFlow</h3>
-<p>Using the <a href="/github-actions-abac-aws/detailed-explanation#authentication-flows/">Basic AuthFlow</a>, we make the token exchange with Cognito Identity and can now use this new token to authenticate with any role in any AWS Account that has a trust policy trusting this token.</p>
+<p>Using the <a href="/github-actions-abac-aws/detailed-explanation#authentication-flows">Basic AuthFlow</a>, we make the token exchange with Cognito Identity and can now use this new token to authenticate with any role in any AWS Account that has a trust policy trusting this token.</p>
 <p><img src="/github-actions-abac-aws/images/gha-cognito-identity-basic-flow.png" alt=""></p>
 <h3 id="github-actions-and-cognito-identity-enhanced-simplified-authflow">GitHub Actions and Cognito Identity Enhanced (Simplified) AuthFlow</h3>
-<p>Using the <a href="/github-actions-abac-aws/detailed-explanation#authentication-flows/">Enhanced AuthFlow</a>, there&rsquo;s still a token exchange with Cognito Identity, but the operations <code>GetOpenIdToken</code> and <code>AssumeRoleWithWebIdentity</code> are bundled into a single operation called <code>GetCredentialsForIdentity</code>. The AWS IAM roles must also be in the same AWS Account as the Cognito Identity Pool.</p>
+<p>Using the <a href="/github-actions-abac-aws/detailed-explanation#authentication-flows">Enhanced AuthFlow</a>, there&rsquo;s still a token exchange with Cognito Identity, but the operations <code>GetOpenIdToken</code> and <code>AssumeRoleWithWebIdentity</code> are bundled into a single operation called <code>GetCredentialsForIdentity</code>. The AWS IAM roles must also be in the same AWS Account as the Cognito Identity Pool.</p>
 <p><img src="/github-actions-abac-aws/images/gha-cognito-identity-enhanced-flow.png" alt=""></p>
 <h3 id="what-is-the-catch">What is the catch?</h3>
 <p>In order to do this, Cognito Identity has to be introduced as a component in your CI/CD environment. Cognito Identity is primarily intended (marketed) for use in mobile apps, so it may feel strange to do this. Also, introducing Cognito Identity can increase complexity and administration of a CI/CD environment, but at the same time it can also reduce the complexity and time required for administration. Ultimately you&rsquo;ll have to evaluate the use case for yourself and your organization to determine if it adds value or not.</p>
 <h3 id="additional-context">Additional Context</h3>
 <p>The reason why we would use Cognito Identity for this is that we need a third party that we can trust to convert our initial credentials (GitHub token) to another credential without allowing the GitHub Actions workflows any option to modify the claims. Using Cognito Identity we use a native AWS service that is free of charge to accomplish this.</p>
 <h2 id="attribute-based-access-control">Attribute Based Access Control</h2>
-<p>Because the GitHub Actions OIDC Access Token claims are now principal/session tags on the AWS IAM Role we assumed, they can be used for ABAC. Read more about <a href="https://docs.aws.amazon.com/IAM/latest/UserGuide/introduction_attribute-based-access-control.html/" target="_blank" rel="noopener">ABAC for AWS</a> and have look at this <a href="https://docs.aws.amazon.com/IAM/latest/UserGuide/tutorial_attribute-based-access-control.html/" target="_blank" rel="noopener">tutorial</a> to learn more if you are unfamiliar with ABAC.</p>
+<p>Because the GitHub Actions OIDC Access Token claims are now principal/session tags on the AWS IAM Role we assumed, they can be used for ABAC. Read more about <a href="https://docs.aws.amazon.com/IAM/latest/UserGuide/introduction_attribute-based-access-control.html" target="_blank" rel="noopener">ABAC for AWS</a> and have look at this <a href="https://docs.aws.amazon.com/IAM/latest/UserGuide/tutorial_attribute-based-access-control.html" target="_blank" rel="noopener">tutorial</a> to learn more if you are unfamiliar with ABAC.</p>
 <h3 id="next">Next</h3>
-<p>Have a look <a href="//">here</a> for additional resources on the topic of <strong>GitHub Actions ABAC in AWS</strong>.</p>
+<p>Have a look <a href="/">here</a> for additional resources on the topic of <strong>GitHub Actions ABAC in AWS</strong>.</p>
 
     </div>
 

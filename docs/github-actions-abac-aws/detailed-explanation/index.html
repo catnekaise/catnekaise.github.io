@@ -4,7 +4,7 @@
     <title>GitHub Actions ABAC in AWS - Detailed Explanation // Catnekaise</title>
     <link rel="shortcut icon" href="/favicon.ico" />
     <meta charset="utf-8" />
-    <meta name="generator" content="Hugo 0.119.0">
+    <meta name="generator" content="Hugo 0.120.4">
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="author" content="catnekaise" />
     <meta name="description" content="" />
@@ -24,7 +24,8 @@ Note It&rsquo;s very important to limit which entities in GitHub Actions are all
 <meta property="og:type" content="article" />
 <meta property="og:url" content="https://catnekaise.github.io/github-actions-abac-aws/detailed-explanation/" /><meta property="article:section" content="github-actions-abac-aws" />
 <meta property="article:published_time" content="2023-10-24T00:00:00+00:00" />
-<meta property="article:modified_time" content="2023-10-24T00:00:00+00:00" />
+<meta property="article:modified_time" content="2023-12-28T00:00:00+00:00" />
+
 
 
   </head>
@@ -103,7 +104,7 @@ Note It&rsquo;s very important to limit which entities in GitHub Actions are all
     <li><a href="#trust-policy">Trust Policy</a>
       <ul>
         <li><a href="#ststagsession">sts:TagSession</a></li>
-        <li><a href="#cognito-identitygetcredentialsforidentity">cognito-identity:GetCredentialsForIdentity</a></li>
+        <li><a href="#service-linked-role">Service-Linked Role</a></li>
         <li><a href="#cognito-identityamazonawscomamr">cognito-identity.amazonaws.com:amr</a></li>
       </ul>
     </li>
@@ -115,7 +116,8 @@ Note It&rsquo;s very important to limit which entities in GitHub Actions are all
     <li><a href="#tags">Tags</a></li>
     <li><a href="#role-chaining-reference">Role Chaining Reference</a>
       <ul>
-        <li></li>
+        <li><a href="#role-chaining---trust-a-role">Role Chaining - Trust a role</a></li>
+        <li><a href="#role-chaining---trust-an-entrypoint-account">Role Chaining - Trust an Entrypoint Account</a></li>
         <li><a href="#role-chaining-cloudtrail-event">Role Chaining CloudTrail Event</a></li>
       </ul>
     </li>
@@ -144,24 +146,24 @@ Note It&rsquo;s very important to limit which entities in GitHub Actions are all
 
     <div class="post-content">
       <p>This is an article containing contextual/behavioural information related to <strong>GitHub Actions</strong>, <strong>Amazon Cognito Identity</strong>, <strong>AWS IAM</strong>, <strong>AWS STS</strong> and their interaction together. This could help when troubleshooting something that is not working or help you understand how a specific part in all of this works.</p>
-<p>This article is not a setup guide nor a starting point. Have a look <a href="/github-actions-abac-aws/cognito-identity/">here</a> if you are just starting out with this topic.</p>
+<p>This article is not a setup guide nor a starting point. Have a look <a href="/github-actions-abac-aws/cognito-identity">here</a> if you are just starting out with this topic.</p>
 <h3 id="note">Note</h3>
 <p>It&rsquo;s <strong>very important</strong> to limit which entities in GitHub Actions are allowed to assume roles in your AWS Account(s). Misconfiguration in either <code>AWS IAM Role trust policies</code> or a <code>Cognito Identity Pool</code> could lead to every organization and user in GitHub being allowed access to your AWS resources from GitHub Actions. Try everything in a sandbox environment first.</p>
-<p>If you find inaccuracies or have other feedback, please create an issue <a href="https://github.com/djonser/blog/issues/" target="_blank" rel="noopener">here</a>. Any feedback that leads to corrections/improvements will have their contribution annotated.</p>
+<p>If you find inaccuracies or have other feedback, please create an issue <a href="https://github.com/djonser/blog/issues" target="_blank" rel="noopener">here</a>. Any feedback that leads to corrections/improvements will have their contribution annotated.</p>
 <h2 id="authentication-flows">Authentication Flows</h2>
 <blockquote>
-<p><a href="https://docs.aws.amazon.com/cognito/latest/developerguide/authentication-flow.html/" target="_blank" rel="noopener">https://docs.aws.amazon.com/cognito/latest/developerguide/authentication-flow.html</a></p>
+<p><a href="https://docs.aws.amazon.com/cognito/latest/developerguide/authentication-flow.html" target="_blank" rel="noopener">https://docs.aws.amazon.com/cognito/latest/developerguide/authentication-flow.html</a></p>
 </blockquote>
 <p>In the context of GitHub Actions and Cognito Identity, the trust policy in AWS IAM Roles will use <code>cognito-identity.amazonaws.com</code> as the trusted federated identity provider instead of <code>arn:aws:iam::111111111111:oidc-provider/token.actions.githubusercontent.com</code> which is used when authenticating directly with <code>AWS STS</code>.</p>
-<p>The reason for this is that the <strong>GitHub Actions OIDC access token</strong> will first be exchanged for a <strong>Cognito Identity OIDC access token</strong>, and it will be this new token that is used when performing <code>AssumeRoleWithWebIdentity</code>, giving the workflow temporary AWS credentials. Read more about this in detail <a href="/github-actions-abac-aws/cognito-identity/">here</a>.</p>
+<p>The reason for this is that the <strong>GitHub Actions OIDC access token</strong> will first be exchanged for a <strong>Cognito Identity OIDC access token</strong>, and it will be this new token that is used when performing <code>AssumeRoleWithWebIdentity</code>, giving the workflow temporary AWS credentials. Read more about this in detail <a href="/github-actions-abac-aws/cognito-identity">here</a>.</p>
 <p>There are two types of authentication flows. <strong>Enhanced (simplified) authflow</strong> and <strong>Basic (classic) authflow</strong>. In the context of GitHub Actions both authentication flows offer advantages and disadvantages. Which one to use will depend on the IAM architecture you want to build.</p>
 <h3 id="basic-classic-authflow">Basic (Classic) AuthFlow</h3>
 <p>When using the Basic AuthFlow, <strong>anyone</strong> that knows the <strong>Cognito Identity Pool ID</strong> and the <strong>AWS account ID</strong> that contains the Identity Pool, both of which are not secrets, will be allowed to exchange a <strong>GitHub Actions OIDC access token</strong> for a <strong>Cognito Identity OIDC access token</strong>. It will not matter if the GitHub organization does not belong to you or if the GitHub user works in your organization or not.</p>
 <p>Having this <strong>Cognito Identity OIDC access token</strong> is not the same as having access to your AWS resources.</p>
-<p>In order to get access to those AWS resources there would have to be an AWS IAM Role with a trust policy allowing this token to assume the role and get credentials. It&rsquo;s configuration in the trust policy that will make it so only access tokens that has claims you trust is allowed access to your AWS resources. It ends up working almost the same as <a href="https://docs.github.com/en/actions/deployment/security-hardening-your-deployments/configuring-openid-connect-in-amazon-web-services/" target="_blank" rel="noopener">Configuring OpenID Connect in Amazon Web Services</a>, but you can now create trust policies using other claims than just the <code>sub</code> claim. A better overview of this <a href="/github-actions-abac-aws/cognito-identity/">here</a>.</p>
+<p>In order to get access to those AWS resources there would have to be an AWS IAM Role with a trust policy allowing this token to assume the role and get credentials. It&rsquo;s configuration in the trust policy that will make it so only access tokens that has claims you trust is allowed access to your AWS resources. It ends up working almost the same as <a href="https://docs.github.com/en/actions/deployment/security-hardening-your-deployments/configuring-openid-connect-in-amazon-web-services" target="_blank" rel="noopener">Configuring OpenID Connect in Amazon Web Services</a>, but you can now create trust policies using other claims than just the <code>sub</code> claim. A better overview of this <a href="/github-actions-abac-aws/cognito-identity">here</a>.</p>
 <h4 id="traits-of-basic-authflow">Traits of Basic AuthFlow</h4>
 <ul>
-<li>Full control over <a href="https://awscli.amazonaws.com/v2/documentation/api/latest/reference/sts/assume-role-with-web-identity.html/" target="_blank" rel="noopener">AssumeRoleWithWebIdentity</a>.</li>
+<li>Full control over <a href="https://awscli.amazonaws.com/v2/documentation/api/latest/reference/sts/assume-role-with-web-identity.html" target="_blank" rel="noopener">AssumeRoleWithWebIdentity</a>.</li>
 <li>Access token can assume roles in other AWS accounts than where the Identity Pool issuing the access token was created.</li>
 <li>Cognito Identity OIDC Access Token is available inside the executing GitHub Actions workflows.
 <ul>
@@ -174,25 +176,25 @@ Note It&rsquo;s very important to limit which entities in GitHub Actions are all
 <ol>
 <li>A GitHub Actions workflow executes with permission <code>id-token</code> set to <code>write</code>.
 <ul>
-<li>In the context of the <a href="https://docs.aws.amazon.com/cognito/latest/developerguide/authentication-flow.html/" target="_blank" rel="noopener">first diagram</a>, the workflow execution represents the <code>Device</code>.</li>
+<li>In the context of the <a href="https://docs.aws.amazon.com/cognito/latest/developerguide/authentication-flow.html" target="_blank" rel="noopener">first diagram</a>, the workflow execution represents the <code>Device</code>.</li>
 </ul>
 </li>
 <li>Workflow uses its ID Token to request an Access Token.
 <ul>
-<li>In the context of the <a href="https://docs.aws.amazon.com/cognito/latest/developerguide/authentication-flow.html/" target="_blank" rel="noopener">first diagram</a>, this represents <code>Login</code>.</li>
-<li><a href="https://docs.github.com/en/actions/deployment/security-hardening-your-deployments/about-security-hardening-with-openid-connect#updating-your-actions-for-oidc/" target="_blank" rel="noopener">GitHub docs</a></li>
+<li>In the context of the <a href="https://docs.aws.amazon.com/cognito/latest/developerguide/authentication-flow.html" target="_blank" rel="noopener">first diagram</a>, this represents <code>Login</code>.</li>
+<li><a href="https://docs.github.com/en/actions/deployment/security-hardening-your-deployments/about-security-hardening-with-openid-connect#updating-your-actions-for-oidc" target="_blank" rel="noopener">GitHub docs</a></li>
 </ul>
 </li>
-<li>Workflow uses the access token to request <a href="https://awscli.amazonaws.com/v2/documentation/api/latest/reference/cognito-identity/get-id.html/" target="_blank" rel="noopener">GetId</a> from the <strong>Cognito Identity Pool</strong> and receives an <code>IdentityId</code>.
+<li>Workflow uses the access token to request <a href="https://awscli.amazonaws.com/v2/documentation/api/latest/reference/cognito-identity/get-id.html" target="_blank" rel="noopener">GetId</a> from the <strong>Cognito Identity Pool</strong> and receives an <code>IdentityId</code>.
 <ul>
-<li>More about these identities below at <a href="#identity-pool-identities/">Identity Pool Identities</a>.</li>
+<li>More about these identities below at <a href="#identity-pool-identities">Identity Pool Identities</a>.</li>
 </ul>
 </li>
-<li>Workflow uses the IdentityId and access token to request <a href="https://awscli.amazonaws.com/v2/documentation/api/latest/reference/cognito-identity/get-open-id-token.html/" target="_blank" rel="noopener">GetOpenIdToken</a> from the <strong>Cognito Identity Pool</strong> and receives a <strong>Cognito Identity OIDC Access Token</strong>.</li>
-<li>Workflow performs <a href="https://awscli.amazonaws.com/v2/documentation/api/latest/reference/sts/assume-role-with-web-identity.html/" target="_blank" rel="noopener">AssumeRoleWithWebIdentity</a> using the <strong>Cognito Identity OIDC Access Token</strong>, and if the trust policy allows for it the workflow now has temporary AWS Credentials that should be <a href="https://docs.github.com/en/actions/using-workflows/workflow-commands-for-github-actions#masking-a-value-in-a-log/" target="_blank" rel="noopener">masked</a> and then put to use.</li>
+<li>Workflow uses the IdentityId and access token to request <a href="https://awscli.amazonaws.com/v2/documentation/api/latest/reference/cognito-identity/get-open-id-token.html" target="_blank" rel="noopener">GetOpenIdToken</a> from the <strong>Cognito Identity Pool</strong> and receives a <strong>Cognito Identity OIDC Access Token</strong>.</li>
+<li>Workflow performs <a href="https://awscli.amazonaws.com/v2/documentation/api/latest/reference/sts/assume-role-with-web-identity.html" target="_blank" rel="noopener">AssumeRoleWithWebIdentity</a> using the <strong>Cognito Identity OIDC Access Token</strong>, and if the trust policy allows for it the workflow now has temporary AWS Credentials that should be <a href="https://docs.github.com/en/actions/using-workflows/workflow-commands-for-github-actions#masking-a-value-in-a-log" target="_blank" rel="noopener">masked</a> and then put to use.</li>
 </ol>
 <h3 id="enhanced-simplified-authflow">Enhanced (Simplified) AuthFlow</h3>
-<p>When using the Enhanced AuthFlow, no <strong>Cognito Identity OIDC access token</strong> will be returned to the workflow. Instead, the operations <code>GetOpenIdToken</code> and <code>AssumeRoleWithWebIdentity</code> are now merged into the single operation <a href="https://awscli.amazonaws.com/v2/documentation/api/latest/reference/cognito-identity/get-credentials-for-identity.html/" target="_blank" rel="noopener">GetCredentialsForIdentity</a>. <code>GetCredentialsForIdentity</code> will only return temporary AWS credentials on success and never return the <strong>Cognito Identity OIDC access token</strong>.</p>
+<p>When using the Enhanced AuthFlow, no <strong>Cognito Identity OIDC access token</strong> will be returned to the workflow. Instead, the operations <code>GetOpenIdToken</code> and <code>AssumeRoleWithWebIdentity</code> are now merged into the single operation <a href="https://awscli.amazonaws.com/v2/documentation/api/latest/reference/cognito-identity/get-credentials-for-identity.html" target="_blank" rel="noopener">GetCredentialsForIdentity</a>. <code>GetCredentialsForIdentity</code> will only return temporary AWS credentials on success and never return the <strong>Cognito Identity OIDC access token</strong>.</p>
 <p>Configuration on the <strong>Identity Pool</strong> will determine if a Cognito Identity OIDC access token is issued and configuration on the Identity Pool will also determine what AWS IAM Role will be assumed using this access token.</p>
 <p>Compared to the basic authflow, some capabilities are removed from the executing GitHub Actions workflow and the Identity Pool receives greater control over the authentication process.</p>
 <h4 id="traits-of-enhanced-authflow">Traits of Enhanced AuthFlow</h4>
@@ -207,26 +209,26 @@ Note It&rsquo;s very important to limit which entities in GitHub Actions are all
 <ol>
 <li>A GitHub Actions workflow executes with permission <code>id-token</code> set to <code>write</code>.
 <ul>
-<li>In the context of the <a href="https://docs.aws.amazon.com/cognito/latest/developerguide/authentication-flow.html/" target="_blank" rel="noopener">first diagram</a>, the workflow execution represents the <code>Device</code>.</li>
+<li>In the context of the <a href="https://docs.aws.amazon.com/cognito/latest/developerguide/authentication-flow.html" target="_blank" rel="noopener">first diagram</a>, the workflow execution represents the <code>Device</code>.</li>
 </ul>
 </li>
 <li>Workflow uses its ID Token to request an Access Token.
 <ul>
-<li>In the context of the <a href="https://docs.aws.amazon.com/cognito/latest/developerguide/authentication-flow.html/" target="_blank" rel="noopener">first diagram</a>, this represents <code>Login</code>.</li>
-<li><a href="https://docs.github.com/en/actions/deployment/security-hardening-your-deployments/about-security-hardening-with-openid-connect#updating-your-actions-for-oidc/" target="_blank" rel="noopener">GitHub docs</a></li>
+<li>In the context of the <a href="https://docs.aws.amazon.com/cognito/latest/developerguide/authentication-flow.html" target="_blank" rel="noopener">first diagram</a>, this represents <code>Login</code>.</li>
+<li><a href="https://docs.github.com/en/actions/deployment/security-hardening-your-deployments/about-security-hardening-with-openid-connect#updating-your-actions-for-oidc" target="_blank" rel="noopener">GitHub docs</a></li>
 </ul>
 </li>
-<li>Workflow uses the access token to request <a href="https://awscli.amazonaws.com/v2/documentation/api/latest/reference/cognito-identity/get-id.html/" target="_blank" rel="noopener">GetId</a> from the <strong>Cognito Identity Pool</strong> and receives an <code>IdentityId</code>.
+<li>Workflow uses the access token to request <a href="https://awscli.amazonaws.com/v2/documentation/api/latest/reference/cognito-identity/get-id.html" target="_blank" rel="noopener">GetId</a> from the <strong>Cognito Identity Pool</strong> and receives an <code>IdentityId</code>.
 <ul>
-<li>More about these identities below at <a href="#identity-pool-identities/">Identity Pool Identities</a>.</li>
+<li>More about these identities below at <a href="#identity-pool-identities">Identity Pool Identities</a>.</li>
 </ul>
 </li>
-<li>Workflow uses the IdentityId and GitHub Actions access token to request <a href="https://awscli.amazonaws.com/v2/documentation/api/latest/reference/cognito-identity/get-credentials-for-identity.html/" target="_blank" rel="noopener">GetCredentialsForIdentity</a> from the <strong>Cognito Identity Pool</strong>.
+<li>Workflow uses the IdentityId and GitHub Actions access token to request <a href="https://awscli.amazonaws.com/v2/documentation/api/latest/reference/cognito-identity/get-credentials-for-identity.html" target="_blank" rel="noopener">GetCredentialsForIdentity</a> from the <strong>Cognito Identity Pool</strong>.
 <ul>
-<li>This request will trigger the &ldquo;auth-configuration&rdquo; (<a href="#rule-evaluation/">Rule Evaluation</a> and <a href="#trust-policy/">Trust Policy</a>) and if the access token does not have the necessary claims, the process stops here.</li>
+<li>This request will trigger the &ldquo;auth-configuration&rdquo; (<a href="#rule-evaluation">Rule Evaluation</a> and <a href="#trust-policy">Trust Policy</a>) and if the access token does not have the necessary claims, the process stops here.</li>
 </ul>
 </li>
-<li>The request was allowed and the workflow now has temporary AWS Credentials that should be <a href="https://docs.github.com/en/actions/using-workflows/workflow-commands-for-github-actions#masking-a-value-in-a-log/" target="_blank" rel="noopener">masked</a> and then put to use.</li>
+<li>The request was allowed and the workflow now has temporary AWS Credentials that should be <a href="https://docs.github.com/en/actions/using-workflows/workflow-commands-for-github-actions#masking-a-value-in-a-log" target="_blank" rel="noopener">masked</a> and then put to use.</li>
 </ol>
 <h3 id="cognito-access-token-example">Cognito Access Token Example</h3>
 <div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-json" data-lang="json"><span style="display:flex;"><span>{
@@ -266,7 +268,7 @@ Note It&rsquo;s very important to limit which entities in GitHub Actions are all
 <p>Using this configuration will limit an Identity Pool to a single IAM Role in AWS.</p>
 <h3 id="choose-role-with-rules">Choose Role with Rules</h3>
 <blockquote>
-<p><a href="https://docs.aws.amazon.com/cognito/latest/developerguide/role-based-access-control.html#using-rules-to-assign-roles-to-users/" target="_blank" rel="noopener">https://docs.aws.amazon.com/cognito/latest/developerguide/role-based-access-control.html#using-rules-to-assign-roles-to-users</a></p>
+<p><a href="https://docs.aws.amazon.com/cognito/latest/developerguide/role-based-access-control.html#using-rules-to-assign-roles-to-users" target="_blank" rel="noopener">https://docs.aws.amazon.com/cognito/latest/developerguide/role-based-access-control.html#using-rules-to-assign-roles-to-users</a></p>
 </blockquote>
 <p>When selecting <strong>Choose Role with Rules</strong>, rules can be created to select a specific role based on the value of any single claim in the GitHub Actions access token. For example, it becomes possible to assign <strong>Role A</strong> if the claim <strong>repository</strong> has a value of <code>catnekaise/example-repo</code> and assign <strong>Role B</strong> if the claim <strong>run_id</strong> has a value of <code>1</code>. Any claim in the GitHub Actions OIDC access token can be used for matching here. A single <strong>Identity Pool</strong> will allow for up to <code>25</code> rules.</p>
 <p>The <strong>Role Selection</strong> feature of Cognito Identity is a weaker version of that which is available in AWS IAM Role trust policies. These role selection rules should not be considered to primarily be a security feature but rather a feature that enables us to build IAM architecture with it. Trust policies should always be used to further restrict access to the roles assigned by these rules.</p>
@@ -281,19 +283,19 @@ Note It&rsquo;s very important to limit which entities in GitHub Actions are all
 </span></span><span style="display:flex;"><span>    <span style="color:#f92672">&#34;Claim&#34;</span>: <span style="color:#e6db74">&#34;sub&#34;</span>,
 </span></span><span style="display:flex;"><span>    <span style="color:#f92672">&#34;MatchType&#34;</span>: <span style="color:#e6db74">&#34;StartsWith&#34;</span>,
 </span></span><span style="display:flex;"><span>    <span style="color:#f92672">&#34;Value&#34;</span>: <span style="color:#e6db74">&#34;repo:catnekaise/example-repo:environment:dev&#34;</span>,
-</span></span><span style="display:flex;"><span>    <span style="color:#f92672">&#34;RoleARN&#34;</span>: <span style="color:#e6db74">&#34;arn:aws:iam::111111111111:role/cognito-gha-dev-role&#34;</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#f92672">&#34;RoleARN&#34;</span>: <span style="color:#e6db74">&#34;arn:aws:iam::111111111111:role/GhaCognitoDevRole&#34;</span>
 </span></span><span style="display:flex;"><span>  },
 </span></span><span style="display:flex;"><span>  {
 </span></span><span style="display:flex;"><span>    <span style="color:#f92672">&#34;Claim&#34;</span>: <span style="color:#e6db74">&#34;repository&#34;</span>,
 </span></span><span style="display:flex;"><span>    <span style="color:#f92672">&#34;MatchType&#34;</span>: <span style="color:#e6db74">&#34;StartsWith&#34;</span>,
 </span></span><span style="display:flex;"><span>    <span style="color:#f92672">&#34;Value&#34;</span>: <span style="color:#e6db74">&#34;catnekaise/infrastructure.&#34;</span>,
-</span></span><span style="display:flex;"><span>    <span style="color:#f92672">&#34;RoleARN&#34;</span>: <span style="color:#e6db74">&#34;arn:aws:iam::111111111111:role/cognito-gha-infra-role&#34;</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#f92672">&#34;RoleARN&#34;</span>: <span style="color:#e6db74">&#34;arn:aws:iam::111111111111:role/GhaCognitoInfraRole&#34;</span>
 </span></span><span style="display:flex;"><span>  },
 </span></span><span style="display:flex;"><span>  {
 </span></span><span style="display:flex;"><span>    <span style="color:#f92672">&#34;Claim&#34;</span>: <span style="color:#e6db74">&#34;repository_owner&#34;</span>,
 </span></span><span style="display:flex;"><span>    <span style="color:#f92672">&#34;MatchType&#34;</span>: <span style="color:#e6db74">&#34;Equals&#34;</span>,
 </span></span><span style="display:flex;"><span>    <span style="color:#f92672">&#34;Value&#34;</span>: <span style="color:#e6db74">&#34;catnekaise&#34;</span>,
-</span></span><span style="display:flex;"><span>    <span style="color:#f92672">&#34;RoleARN&#34;</span>: <span style="color:#e6db74">&#34;arn:aws:iam::111111111111:role/cognito-gha-role&#34;</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#f92672">&#34;RoleARN&#34;</span>: <span style="color:#e6db74">&#34;arn:aws:iam::111111111111:role/GhaCognito&#34;</span>
 </span></span><span style="display:flex;"><span>  }
 </span></span><span style="display:flex;"><span>]
 </span></span></code></pre></div><h2 id="rule-evaluation">Rule Evaluation</h2>
@@ -308,7 +310,7 @@ Note It&rsquo;s very important to limit which entities in GitHub Actions are all
 <ul>
 <li>If a rule does not match, evaluation moves on to the next rule.</li>
 <li>If no rules match, request is considered ambiguous, <code>role resolution</code> is triggered and either <code>deny request</code> or <code>use default authenticated role</code> will occur.</li>
-<li><a href="https://docs.aws.amazon.com/cognito/latest/developerguide/role-based-access-control.html#using-rules-to-assign-roles-to-users/" target="_blank" rel="noopener">Official Docs</a></li>
+<li><a href="https://docs.aws.amazon.com/cognito/latest/developerguide/role-based-access-control.html#using-rules-to-assign-roles-to-users" target="_blank" rel="noopener">Official Docs</a></li>
 </ul>
 </li>
 <li>A rule was matched, a <strong>Cognito Identity OIDC access token</strong> is issued and <code>AssumeRoleWithWebIdentity</code> is performed on the Role specified in <code>RoleARN</code> using this access token.
@@ -316,16 +318,16 @@ Note It&rsquo;s very important to limit which entities in GitHub Actions are all
 <li>If no rule was matched but <strong>role resolution</strong> was configured with <code>use default authenticated role</code>, then a token is issued and <code>AssumeRoleWithWebIdentity</code> will be performed against that role.</li>
 </ul>
 </li>
-<li>Temporary AWS Credentials are returned to the workflow that should be <a href="https://docs.github.com/en/actions/using-workflows/workflow-commands-for-github-actions#masking-a-value-in-a-log/" target="_blank" rel="noopener">masked</a> and then put to use.</li>
+<li>Temporary AWS Credentials are returned to the workflow that should be <a href="https://docs.github.com/en/actions/using-workflows/workflow-commands-for-github-actions#masking-a-value-in-a-log" target="_blank" rel="noopener">masked</a> and then put to use.</li>
 </ol>
 <h4 id="custom-role-arn">Custom Role Arn</h4>
 <blockquote>
-<p><a href="https://docs.aws.amazon.com/cognito/latest/developerguide/role-based-access-control.html#using-tokens-to-assign-roles-to-users/" target="_blank" rel="noopener">https://docs.aws.amazon.com/cognito/latest/developerguide/role-based-access-control.html#using-tokens-to-assign-roles-to-users</a></p>
+<p><a href="https://docs.aws.amazon.com/cognito/latest/developerguide/role-based-access-control.html#using-tokens-to-assign-roles-to-users" target="_blank" rel="noopener">https://docs.aws.amazon.com/cognito/latest/developerguide/role-based-access-control.html#using-tokens-to-assign-roles-to-users</a></p>
 </blockquote>
 <p>When multiple rules in the same Identity Pool would match claims in the same GitHub Actions access token, the workflow can choose to include a <strong>custom role arn</strong> with the <code>GetCredentialsForIdentity</code> request to make it so <strong>RoleARN</strong> must also match the provided custom role arn.</p>
 <h2 id="claim-mapping">Claim Mapping</h2>
 <p>A Cognito Identity Pool can be configured to map claims from an OIDC access token to principal/session tags. This is what will allow attribute based access control. A claim can be mapped to a tag with a different name than the claim.</p>
-<p>While the GitHub Actions access token <em>only</em> has ~24 claims and the Identity Pool configuration allows for selecting 50 claims to be mapped, <a href="https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_iam-quotas.html#reference_iam-quotas-entity-length/" target="_blank" rel="noopener">limits in AWS IAM/STS</a> will only allow so much data to be entered into the session policy. Read more about this further down in <a href="#session-limit/">Session Limits</a>.</p>
+<p>While the GitHub Actions access token <em>only</em> has ~24 claims and the Identity Pool configuration allows for selecting 50 claims to be mapped, <a href="https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_iam-quotas.html#reference_iam-quotas-entity-length" target="_blank" rel="noopener">limits in AWS IAM/STS</a> will only allow so much data to be entered into the session policy. Read more about this further down in <a href="#session-limit">Session Limits</a>.</p>
 <h3 id="cloudtrail">CloudTrail</h3>
 <p>If Cognito Identity issues an OIDC access token and this token is used in either the basic or enhanced authflow to perform <code>AssumeRoleWithWebIdentity</code>, a CloudTrail event will look like this when the trust policy allowed assumption.</p>
 <div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-json" data-lang="json"><span style="display:flex;"><span>{
@@ -348,13 +350,13 @@ Note It&rsquo;s very important to limit which entities in GitHub Actions are all
 </span></span><span style="display:flex;"><span>      <span style="color:#f92672">&#34;run_attempt&#34;</span>: <span style="color:#e6db74">&#34;1&#34;</span>,
 </span></span><span style="display:flex;"><span>      <span style="color:#f92672">&#34;sha&#34;</span>: <span style="color:#e6db74">&#34;abcdef1234abcdef1234abcdef1234abcdef1234&#34;</span>
 </span></span><span style="display:flex;"><span>    },
-</span></span><span style="display:flex;"><span>    <span style="color:#f92672">&#34;roleArn&#34;</span>: <span style="color:#e6db74">&#34;arn:aws:iam::111111111111:role/cognito-gha&#34;</span>,
+</span></span><span style="display:flex;"><span>    <span style="color:#f92672">&#34;roleArn&#34;</span>: <span style="color:#e6db74">&#34;arn:aws:iam::111111111111:role/GhaCognito&#34;</span>,
 </span></span><span style="display:flex;"><span>    <span style="color:#f92672">&#34;roleSessionName&#34;</span>: <span style="color:#e6db74">&#34;CognitoIdentityCredentials&#34;</span>
 </span></span><span style="display:flex;"><span>  },
 </span></span><span style="display:flex;"><span>  <span style="color:#f92672">&#34;responseElement&#34;</span>: {
 </span></span><span style="display:flex;"><span>    <span style="color:#f92672">&#34;subjectFromWebIdentityToken&#34;</span>: <span style="color:#e6db74">&#34;eu-west-1:11111111-example&#34;</span>,
 </span></span><span style="display:flex;"><span>    <span style="color:#f92672">&#34;assumedRoleUser&#34;</span>: {
-</span></span><span style="display:flex;"><span>      <span style="color:#f92672">&#34;arn&#34;</span>: <span style="color:#e6db74">&#34;arn:aws:iam::111111111111:role/cognito-gha/CognitoIdentityCredentials&#34;</span>
+</span></span><span style="display:flex;"><span>      <span style="color:#f92672">&#34;arn&#34;</span>: <span style="color:#e6db74">&#34;arn:aws:iam::111111111111:role/GhaCognito/CognitoIdentityCredentials&#34;</span>
 </span></span><span style="display:flex;"><span>    },
 </span></span><span style="display:flex;"><span>    <span style="color:#f92672">&#34;packedPolicySize&#34;</span>: <span style="color:#ae81ff">47</span>,
 </span></span><span style="display:flex;"><span>    <span style="color:#f92672">&#34;provider&#34;</span>: <span style="color:#e6db74">&#34;cognito-identity.amazonaws.com&#34;</span>,
@@ -367,7 +369,7 @@ Note It&rsquo;s very important to limit which entities in GitHub Actions are all
 <p>AWS STS will receive the Cognito Identity OIDC access token where the audience will be the <strong>Cognito Identity Pool ID</strong>.</p>
 <h2 id="trust-policy">Trust Policy</h2>
 <blockquote>
-<p><a href="https://docs.aws.amazon.com/cognito/latest/developerguide/role-based-access-control.html#creating-roles-for-role-mapping/" target="_blank" rel="noopener">https://docs.aws.amazon.com/cognito/latest/developerguide/role-based-access-control.html#creating-roles-for-role-mapping</a></p>
+<p><a href="https://docs.aws.amazon.com/cognito/latest/developerguide/role-based-access-control.html#creating-roles-for-role-mapping" target="_blank" rel="noopener">https://docs.aws.amazon.com/cognito/latest/developerguide/role-based-access-control.html#creating-roles-for-role-mapping</a></p>
 </blockquote>
 <p>Below is the <em>default</em> trust policy for a role that should be assumed using the Cognito Identity OIDC access token. It&rsquo;s the policy created when asking the AWS Console to create an IAM Role during set up, and it&rsquo;s also the policy example used in official documentation.</p>
 <div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-json" data-lang="json"><span style="display:flex;"><span>{
@@ -394,11 +396,18 @@ Note It&rsquo;s very important to limit which entities in GitHub Actions are all
 </span></span><span style="display:flex;"><span>}
 </span></span></code></pre></div><h3 id="ststagsession">sts:TagSession</h3>
 <p>As soon a single claim is mapped in an Identity Pool, <code>sts:TagSession</code> must be added as an <code>Action</code> in the trust policy. Failing to add this will result in failure to assume this role.</p>
-<h3 id="cognito-identitygetcredentialsforidentity">cognito-identity:GetCredentialsForIdentity</h3>
-<p>This permission is attached to the role created when selecting <code>New IAM Role</code> during Identity Pool creation in the AWS Console. In the context of GitHub Actions getting credentials, the role does not need this permission.</p>
+<h3 id="service-linked-role">Service-Linked Role</h3>
+<ul>
+<li>When using the AWS Console to create a Cognito Identity Pool and selecting <code>New IAM Role</code>, the role becomes service-linked and will have an ARN like <code>arn:aws:iam::111111111111:role/service-role/GhaCognito</code>.
+<ul>
+<li>The service-linked role will be granted <code>cognito-identity:GetCredentialsForIdentity</code> for <code>*</code> resources. In the context of GitHub Actions getting credentials, the role does not need this permission.</li>
+</ul>
+</li>
+<li>It&rsquo;s not required that roles assumed via Cognito Identity exist under the role path service-roles.</li>
+</ul>
 <h3 id="cognito-identityamazonawscomamr">cognito-identity.amazonaws.com:amr</h3>
 <blockquote>
-<p><a href="https://docs.aws.amazon.com/cognito/latest/developerguide/role-trust-and-permissions.html/" target="_blank" rel="noopener">https://docs.aws.amazon.com/cognito/latest/developerguide/role-trust-and-permissions.html</a></p>
+<p><a href="https://docs.aws.amazon.com/cognito/latest/developerguide/role-trust-and-permissions.html" target="_blank" rel="noopener">https://docs.aws.amazon.com/cognito/latest/developerguide/role-trust-and-permissions.html</a></p>
 </blockquote>
 <ul>
 <li>When using the value <code>authenticated</code> for matching <code>cognito-identity.amazonaws.com:amr</code> as seen in the trust policy above, it requires an identity authenticated with <strong>any</strong> identity provider attached to the identity pool.
@@ -406,7 +415,7 @@ Note It&rsquo;s very important to limit which entities in GitHub Actions are all
 <li>A single Identity Pool can be configured with multiple Identity Providers.</li>
 </ul>
 </li>
-<li>It&rsquo;s also possible to match <a href="https://openid.net/specs/openid-connect-core-1_0.html/" target="_blank" rel="noopener">amr</a> with <code>token.actions.githubusercontent.com</code> or <code>arn:aws:iam::111111111111:oidc-provider/token.actions.githubusercontent.com:OIDC:repo:catnekaise/example-repo:environment:dev</code> (<code>identity_provider_arn:OIDC:value_of_sub_claim</code>) instead.</li>
+<li>It&rsquo;s also possible to match <a href="https://openid.net/specs/openid-connect-core-1_0.html" target="_blank" rel="noopener">amr</a> with <code>token.actions.githubusercontent.com</code> or <code>arn:aws:iam::111111111111:oidc-provider/token.actions.githubusercontent.com:OIDC:repo:catnekaise/example-repo:environment:dev</code> (<code>identity_provider_arn:OIDC:value_of_sub_claim</code>) instead.</li>
 <li>If using any value other than <code>authenticated</code> for the role that is configured as the <code>Default Authenticated Role</code>, the Cognito Identity Console UI will display a large warning saying &ldquo;Trust policy isn&rsquo;t secure for this identity pool&rdquo;. This is incorrect and is likely on a TODO list somewhere.</li>
 </ul>
 <h2 id="conditions">Conditions</h2>
@@ -439,7 +448,7 @@ Note It&rsquo;s very important to limit which entities in GitHub Actions are all
 </span></span><span style="display:flex;"><span>  ]
 </span></span><span style="display:flex;"><span>}
 </span></span></code></pre></div><h4 id="many-conditions">Many conditions</h4>
-<p>A trust policy has a <a href="https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_iam-quotas.html#reference_iam-quotas-entity-length/" target="_blank" rel="noopener">soft quota</a> of 2048 characters, and it can be raised up to 4096 characters.</p>
+<p>A trust policy has a <a href="https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_iam-quotas.html#reference_iam-quotas-entity-length" target="_blank" rel="noopener">soft quota</a> of 2048 characters, and it can be raised up to 4096 characters.</p>
 <div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-json" data-lang="json"><span style="display:flex;"><span>{
 </span></span><span style="display:flex;"><span>  <span style="color:#f92672">&#34;Condition&#34;</span>: {
 </span></span><span style="display:flex;"><span>    <span style="color:#f92672">&#34;StringEquals&#34;</span>: {
@@ -477,19 +486,14 @@ Note It&rsquo;s very important to limit which entities in GitHub Actions are all
 <p>In short, be mindful of resource tags attached to AWS IAM Roles when using ABAC.</p>
 <h2 id="role-chaining-reference">Role Chaining Reference</h2>
 <blockquote>
-<p><a href="https://docs.aws.amazon.com/IAM/latest/UserGuide/id_session-tags.html#id_session-tags_role-chaining/" target="_blank" rel="noopener">https://docs.aws.amazon.com/IAM/latest/UserGuide/id_session-tags.html#id_session-tags_role-chaining</a></p>
+<p><a href="https://docs.aws.amazon.com/IAM/latest/UserGuide/id_session-tags.html#id_session-tags_role-chaining" target="_blank" rel="noopener">https://docs.aws.amazon.com/IAM/latest/UserGuide/id_session-tags.html#id_session-tags_role-chaining</a></p>
 </blockquote>
+<h3 id="role-chaining---trust-a-role">Role Chaining - Trust a role</h3>
 <ul>
 <li>Include action <code>sts:TagSession</code> if intending to pass existing session tags.</li>
-<li>If trusting <code>cognito-identity.amazonaws.com:aud</code> then setting <code>aws:FederatedProvider</code> is redundant.
-<ul>
-<li>Specifying either of these is redundant if also specifying a principal that could only have been assumed via a single identity pool, but it may provide additional context when viewing the trust policy in isolation.</li>
-</ul>
-</li>
 <li>Use <code>aws:principalTag/tag_name</code> to require existing tag (claim) to have specified value.</li>
 <li>Set <code>aws:requestTag/tag_name</code> to match <code>${aws:principalTag/tag_name}</code> to ensure that tags/claims are not changed when performing <code>AssumeRole</code> (if passing existing tags).</li>
 <li>Use <code>aws:tagKeys</code> to restrict which session tags can be set.</li>
-<li>Potentially use <code>sts:externalId</code> in combination with principal role permissions when doing cross-account assumptions.</li>
 </ul>
 <div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-json" data-lang="json"><span style="display:flex;"><span>{
 </span></span><span style="display:flex;"><span>  <span style="color:#f92672">&#34;Version&#34;</span>: <span style="color:#e6db74">&#34;2012-10-17&#34;</span>,
@@ -497,7 +501,7 @@ Note It&rsquo;s very important to limit which entities in GitHub Actions are all
 </span></span><span style="display:flex;"><span>    {
 </span></span><span style="display:flex;"><span>      <span style="color:#f92672">&#34;Effect&#34;</span>: <span style="color:#e6db74">&#34;Allow&#34;</span>,
 </span></span><span style="display:flex;"><span>      <span style="color:#f92672">&#34;Principal&#34;</span>: {
-</span></span><span style="display:flex;"><span>        <span style="color:#f92672">&#34;AWS&#34;</span>: <span style="color:#e6db74">&#34;arn:aws:iam::111111111111:role/cognito-gha&#34;</span>
+</span></span><span style="display:flex;"><span>        <span style="color:#f92672">&#34;AWS&#34;</span>: <span style="color:#e6db74">&#34;arn:aws:iam::111111111111:role/GhaCognito&#34;</span>
 </span></span><span style="display:flex;"><span>      },
 </span></span><span style="display:flex;"><span>      <span style="color:#f92672">&#34;Action&#34;</span>: [
 </span></span><span style="display:flex;"><span>        <span style="color:#e6db74">&#34;sts:AssumeRole&#34;</span>,
@@ -505,23 +509,20 @@ Note It&rsquo;s very important to limit which entities in GitHub Actions are all
 </span></span><span style="display:flex;"><span>      ],
 </span></span><span style="display:flex;"><span>      <span style="color:#f92672">&#34;Condition&#34;</span>: {
 </span></span><span style="display:flex;"><span>        <span style="color:#f92672">&#34;StringEquals&#34;</span>: {
-</span></span><span style="display:flex;"><span>          <span style="color:#f92672">&#34;cognito-identity.amazonaws.com:aud&#34;</span>: <span style="color:#e6db74">&#34;eu-west-1:11111111-example&#34;</span>,
-</span></span><span style="display:flex;"><span>          <span style="color:#f92672">&#34;aws:FederatedProvider&#34;</span>: <span style="color:#e6db74">&#34;cognito-identity.amazonaws.com&#34;</span>,
 </span></span><span style="display:flex;"><span>          <span style="color:#f92672">&#34;aws:principalTag/environment&#34;</span>: <span style="color:#e6db74">&#34;prod&#34;</span>,
 </span></span><span style="display:flex;"><span>          <span style="color:#f92672">&#34;aws:requestTag/repository&#34;</span>: <span style="color:#e6db74">&#34;${aws:principalTag/repository}&#34;</span>,
 </span></span><span style="display:flex;"><span>          <span style="color:#f92672">&#34;aws:requestTag/job_workflow_ref&#34;</span>: <span style="color:#e6db74">&#34;${aws:principalTag/job_workflow_ref}&#34;</span>,
-</span></span><span style="display:flex;"><span>          <span style="color:#f92672">&#34;aws:requestTag/environment&#34;</span>: <span style="color:#e6db74">&#34;${aws:principalTag/environment}&#34;</span>,
-</span></span><span style="display:flex;"><span>          <span style="color:#f92672">&#34;sts:externalId&#34;</span>: <span style="color:#e6db74">&#34;github-actions&#34;</span>
+</span></span><span style="display:flex;"><span>          <span style="color:#f92672">&#34;aws:requestTag/environment&#34;</span>: <span style="color:#e6db74">&#34;${aws:principalTag/environment}&#34;</span>
 </span></span><span style="display:flex;"><span>        },
 </span></span><span style="display:flex;"><span>        <span style="color:#f92672">&#34;ForAllValues:StringEquals&#34;</span>: {
-</span></span><span style="display:flex;"><span>          <span style="color:#f92672">&#34;aws:tagKeys&#34;</span>: [
+</span></span><span style="display:flex;"><span>          <span style="color:#f92672">&#34;aws:TagKeys&#34;</span>: [
 </span></span><span style="display:flex;"><span>            <span style="color:#e6db74">&#34;repository&#34;</span>,
 </span></span><span style="display:flex;"><span>            <span style="color:#e6db74">&#34;environment&#34;</span>,
 </span></span><span style="display:flex;"><span>            <span style="color:#e6db74">&#34;job_workflow_ref&#34;</span>
 </span></span><span style="display:flex;"><span>          ]
 </span></span><span style="display:flex;"><span>        },
 </span></span><span style="display:flex;"><span>        <span style="color:#f92672">&#34;StringLike&#34;</span>: {
-</span></span><span style="display:flex;"><span>          <span style="color:#f92672">&#34;aws:principalTag/repository&#34;</span>: [
+</span></span><span style="display:flex;"><span>          <span style="color:#f92672">&#34;aws:PrincipalTag/repository&#34;</span>: [
 </span></span><span style="display:flex;"><span>            <span style="color:#e6db74">&#34;catnekaise/example.*&#34;</span>
 </span></span><span style="display:flex;"><span>          ]
 </span></span><span style="display:flex;"><span>        }
@@ -529,8 +530,7 @@ Note It&rsquo;s very important to limit which entities in GitHub Actions are all
 </span></span><span style="display:flex;"><span>    }
 </span></span><span style="display:flex;"><span>  ]
 </span></span><span style="display:flex;"><span>}
-</span></span></code></pre></div><h6 id="principal-permissions">Principal Permissions</h6>
-<p>The role (<code>arn:aws:iam::111111111111:role/cognito-gha</code>) will need permissions if assuming roles in other accounts. Below is a couple of examples, but you should have a look at <a href="https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_common-scenarios.html/" target="_blank" rel="noopener">official documentation</a> and figure out what best suits your architecture.</p>
+</span></span></code></pre></div><h4 id="role-chaining---ghacognito-permissions">Role Chaining - GhaCognito Permissions</h4>
 <div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-json" data-lang="json"><span style="display:flex;"><span>{
 </span></span><span style="display:flex;"><span>  <span style="color:#f92672">&#34;Version&#34;</span>: <span style="color:#e6db74">&#34;2012-10-17&#34;</span>,
 </span></span><span style="display:flex;"><span>  <span style="color:#f92672">&#34;Statement&#34;</span>: [
@@ -541,28 +541,96 @@ Note It&rsquo;s very important to limit which entities in GitHub Actions are all
 </span></span><span style="display:flex;"><span>        <span style="color:#e6db74">&#34;sts:TagSession&#34;</span>
 </span></span><span style="display:flex;"><span>      ],
 </span></span><span style="display:flex;"><span>      <span style="color:#f92672">&#34;Resource&#34;</span>: [
-</span></span><span style="display:flex;"><span>        <span style="color:#e6db74">&#34;arn:aws:iam::222222222222:role/chained-gha-role&#34;</span>
+</span></span><span style="display:flex;"><span>        <span style="color:#e6db74">&#34;arn:aws:iam::222222222222:role/WorkloadRole&#34;</span>
 </span></span><span style="display:flex;"><span>      ]
-</span></span><span style="display:flex;"><span>    },
-</span></span><span style="display:flex;"><span>    {
-</span></span><span style="display:flex;"><span>      <span style="color:#f92672">&#34;Effect&#34;</span>: <span style="color:#e6db74">&#34;Allow&#34;</span>,
-</span></span><span style="display:flex;"><span>      <span style="color:#f92672">&#34;Action&#34;</span>: [
-</span></span><span style="display:flex;"><span>        <span style="color:#e6db74">&#34;sts:AssumeRole&#34;</span>,
-</span></span><span style="display:flex;"><span>        <span style="color:#e6db74">&#34;sts:TagSession&#34;</span>
-</span></span><span style="display:flex;"><span>      ],
-</span></span><span style="display:flex;"><span>      <span style="color:#f92672">&#34;Resource&#34;</span>: [
-</span></span><span style="display:flex;"><span>        <span style="color:#e6db74">&#34;*&#34;</span>
-</span></span><span style="display:flex;"><span>      ],
-</span></span><span style="display:flex;"><span>      <span style="color:#f92672">&#34;Condition&#34;</span>: {
-</span></span><span style="display:flex;"><span>        <span style="color:#f92672">&#34;StringEquals&#34;</span>: {
-</span></span><span style="display:flex;"><span>          <span style="color:#f92672">&#34;sts:externalId&#34;</span>: <span style="color:#e6db74">&#34;github-actions&#34;</span>,
-</span></span><span style="display:flex;"><span>          <span style="color:#f92672">&#34;aws:PrincipalOrgID&#34;</span>: <span style="color:#e6db74">&#34;o-example&#34;</span>
-</span></span><span style="display:flex;"><span>        }
-</span></span><span style="display:flex;"><span>      }
 </span></span><span style="display:flex;"><span>    }
 </span></span><span style="display:flex;"><span>  ]
 </span></span><span style="display:flex;"><span>}
-</span></span></code></pre></div><h5 id="assume-role">Assume Role</h5>
+</span></span></code></pre></div><h3 id="role-chaining---trust-an-entrypoint-account">Role Chaining - Trust an Entrypoint Account</h3>
+<p>Use this to trust that a specific entrypoint account have correctly authenticated users via a Cognito Identity Pool.</p>
+<ul>
+<li>Include action <code>sts:TagSession</code> if intending to pass existing session tags.</li>
+<li>Use <code>aws:principalTag/tag_name</code> to require existing tag (claim) to have specified value.</li>
+<li>Set <code>aws:requestTag/tag_name</code> to match <code>${aws:principalTag/tag_name}</code> to ensure that tags/claims are not changed when performing <code>AssumeRole</code> (if passing existing tags).</li>
+<li>Use <code>aws:tagKeys</code> to restrict which session tags can be set.</li>
+</ul>
+<pre tabindex="0"><code class="language-json5" data-lang="json5">{
+  &#34;Version&#34;: &#34;2012-10-17&#34;,
+  &#34;Statement&#34;: [
+    {
+      &#34;Effect&#34;: &#34;Allow&#34;,
+      &#34;Principal&#34;: {
+        &#34;AWS&#34;: &#34;arn:aws:iam::111111111111:root&#34;
+      },
+      &#34;Action&#34;: [
+        &#34;sts:AssumeRole&#34;,
+        &#34;sts:TagSession&#34;
+      ],
+      &#34;Condition&#34;: {
+        &#34;StringEquals&#34;: {
+          // Crucial that the account 111111111111 only uses Cognito Identity for GitHub Actions OIDC and nothing else
+          &#34;aws:FederatedProvider&#34;: &#34;cognito-identity.amazonaws.com&#34;,
+          &#34;aws:PrincipalTag/environment&#34;: &#34;prod&#34;,
+          &#34;aws:RequestTag/repository&#34;: &#34;${aws:principalTag/repository}&#34;,
+          &#34;aws:RequestTag/job_workflow_ref&#34;: &#34;${aws:principalTag/job_workflow_ref}&#34;,
+          &#34;aws:RequestTag/environment&#34;: &#34;${aws:principalTag/environment}&#34;
+        },
+        &#34;ForAllValues:StringEquals&#34;: {
+          &#34;aws:TagKeys&#34;: [
+            &#34;repository&#34;,
+            &#34;environment&#34;,
+            &#34;job_workflow_ref&#34;
+          ]
+        },
+        &#34;StringLike&#34;: {
+          &#34;aws:PrincipalTag/repository&#34;: [
+            &#34;catnekaise/example.*&#34;
+          ]
+        }
+      }
+    }
+  ]
+}
+</code></pre><h5 id="role-chaining---alternative-for-permissions">Role Chaining - Alternative for Permissions</h5>
+<p>Granting the permissions below to roles in an entrypoint account makes it so that no changes are required when additional workload accounts are integrated. The conditions are used so prevent other roles that trusts the same entrypoint account from being assumable.</p>
+<pre tabindex="0"><code class="language-json5" data-lang="json5">{
+  &#34;Version&#34;: &#34;2012-10-17&#34;,
+  &#34;Statement&#34;: [
+    {
+      // Include when passing claims
+      &#34;Effect&#34;: &#34;Allow&#34;,
+      &#34;Action&#34;: &#34;sts:TagSession&#34;,
+      &#34;Resource&#34;: &#34;*&#34;
+    },
+    {
+      &#34;Effect&#34;: &#34;Allow&#34;,
+      &#34;Action&#34;: &#34;sts:AssumeRole&#34;,
+      // Role Path to limit assuming roles to those under this path
+      &#34;Resource&#34;: &#34;arn:aws:iam::*:role/github-actions/*&#34;,
+      &#34;Condition&#34;: {
+        &#34;StringEquals&#34;: {
+          // ResourceTag to limit that roles being assumed have this tag
+          &#34;aws:ResourceTag/tag1&#34;: &#34;someValue&#34;,
+          // Shall not be able to assume roles in a different organization
+          &#34;aws:ResourceOrgID&#34;: &#34;o-example&#34;
+        },
+        &#34;StringNotEquals&#34;: {
+          // Shall not be allowed to assume roles in these accounts
+          &#34;aws:ResourceAccount&#34;: [
+            &#34;111111111111&#34;
+          ]
+        },
+        &#34;ForAnyValue:StringLike&#34;: {
+          // Optionally limit to accounts in organization path(s) below
+          &#34;aws:ResourceOrgPaths&#34;: [
+            &#34;o-example/r-ab12/ou-ab12-11111111/*&#34;
+          ]
+        }
+      }
+    }
+  ]
+}
+</code></pre><h5 id="assume-role">Assume Role</h5>
 <p>Inside a GitHub Actions workflow it would look similar to this when using the AWS CLI directly.</p>
 <div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>aws sts assume-role <span style="color:#ae81ff">\
 </span></span></span><span style="display:flex;"><span><span style="color:#ae81ff"></span>--role-arn arn:aws:iam::222222222222:role/chained-gha-role <span style="color:#ae81ff">\
@@ -630,7 +698,7 @@ Note It&rsquo;s very important to limit which entities in GitHub Actions are all
 </span></span><span style="display:flex;"><span>    {
 </span></span><span style="display:flex;"><span>      <span style="color:#f92672">&#34;Effect&#34;</span>: <span style="color:#e6db74">&#34;Deny&#34;</span>,
 </span></span><span style="display:flex;"><span>      <span style="color:#f92672">&#34;NotPrincipal&#34;</span>: {
-</span></span><span style="display:flex;"><span>        <span style="color:#f92672">&#34;AWS&#34;</span>: <span style="color:#e6db74">&#34;arn:aws:iam::111111111111:role/cognito-gha&#34;</span>
+</span></span><span style="display:flex;"><span>        <span style="color:#f92672">&#34;AWS&#34;</span>: <span style="color:#e6db74">&#34;arn:aws:iam::111111111111:role/GhaCognito&#34;</span>
 </span></span><span style="display:flex;"><span>      },
 </span></span><span style="display:flex;"><span>      <span style="color:#f92672">&#34;Action&#34;</span>: [
 </span></span><span style="display:flex;"><span>        <span style="color:#e6db74">&#34;s3:PutObject&#34;</span>
@@ -648,7 +716,7 @@ Note It&rsquo;s very important to limit which entities in GitHub Actions are all
 </span></span><span style="display:flex;"><span>}
 </span></span></code></pre></div><h2 id="identity-pool-identities">Identity Pool Identities</h2>
 <ul>
-<li>Any GitHub Actions workflow executed by any GitHub user can create an identity with a <a href="https://docs.aws.amazon.com/cognito/latest/developerguide/cognito-identity.html/" target="_blank" rel="noopener">Cognito Identity Pool</a> configured with GitHub Actions as an Identity Provider.
+<li>Any GitHub Actions workflow executed by any GitHub user can create an identity with a <a href="https://docs.aws.amazon.com/cognito/latest/developerguide/cognito-identity.html" target="_blank" rel="noopener">Cognito Identity Pool</a> configured with GitHub Actions as an Identity Provider.
 <ul>
 <li>This is as long as the workflow has the combination of the identity pool id (<code>eu-west-1:11111111-example</code>) and the AWS account ID hosting the identity pool, both of which are not secrets.</li>
 <li>No workflow can get temporary AWS credentials unless the identity pool configuration and AWS IAM Role trust policy allows for it.</li>
@@ -657,14 +725,14 @@ Note It&rsquo;s very important to limit which entities in GitHub Actions are all
 <li>One Identity is created in the Identity Pool per unique <code>sub</code> claim.
 <ul>
 <li><code>sub</code> claim <code>repo:catnekaise/example-repo:environment:dev</code> will have a different <code>IdentityId</code> than <code>repo:catnekaise/example-repo:environment:prod</code></li>
-<li>Depending on <a href="https://docs.github.com/en/actions/deployment/security-hardening-your-deployments/about-security-hardening-with-openid-connect#customizing-the-token-claims/" target="_blank" rel="noopener">customization</a> of the <code>sub</code> claim, each workflow run has the potential to create a new identity in the pool.</li>
+<li>Depending on <a href="https://docs.github.com/en/actions/deployment/security-hardening-your-deployments/about-security-hardening-with-openid-connect#customizing-the-token-claims" target="_blank" rel="noopener">customization</a> of the <code>sub</code> claim, each workflow run has the potential to create a new identity in the pool.</li>
 <li>There&rsquo;s no quota on identities per identity pool.</li>
 </ul>
 </li>
 </ul>
 <h2 id="quotas">Quotas</h2>
 <blockquote>
-<p><a href="https://docs.aws.amazon.com/cognito/latest/developerguide/limits.html#amazon-cognito-identity-pools-federated-identities-request-rate-quotas/" target="_blank" rel="noopener">https://docs.aws.amazon.com/cognito/latest/developerguide/limits.html#amazon-cognito-identity-pools-federated-identities-request-rate-quotas</a></p>
+<p><a href="https://docs.aws.amazon.com/cognito/latest/developerguide/limits.html#amazon-cognito-identity-pools-federated-identities-request-rate-quotas" target="_blank" rel="noopener">https://docs.aws.amazon.com/cognito/latest/developerguide/limits.html#amazon-cognito-identity-pools-federated-identities-request-rate-quotas</a></p>
 </blockquote>
 <h4 id="adjustable">Adjustable</h4>
 <ul>
@@ -673,7 +741,7 @@ Note It&rsquo;s very important to limit which entities in GitHub Actions are all
 <li><code>GetId</code> - 25 RPS (Basic and Enhanced AuthFlow)
 <ul>
 <li>Since GetId is less than both <code>GetOpenIdToken</code> and <code>GetCredentialsForIdentity</code> it cancels out those quotas.</li>
-<li>The reason for the discrepancy between 25 and 200 is as the <a href="https://docs.aws.amazon.com/cognito/latest/developerguide/authentication-flow.html/" target="_blank" rel="noopener">documentation states</a>: &ldquo;The application is expected to cache this identity ID to make subsequent calls to Amazon Cognito&rdquo;.</li>
+<li>The reason for the discrepancy between 25 and 200 is as the <a href="https://docs.aws.amazon.com/cognito/latest/developerguide/authentication-flow.html" target="_blank" rel="noopener">documentation states</a>: &ldquo;The application is expected to cache this identity ID to make subsequent calls to Amazon Cognito&rdquo;.</li>
 </ul>
 </li>
 </ul>
@@ -682,12 +750,12 @@ Note It&rsquo;s very important to limit which entities in GitHub Actions are all
 <li><code>Role-based access control (RBAC) rules</code> - 25 rules per Identity Pool</li>
 </ul>
 <h2 id="session-limit">Session Limit</h2>
-<p>Sessions are involved when using <code>AssumeRoleWithWebIdentity</code>. Read more <a href="https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_iam-quotas.html#reference_iam-quotas-entity-length/" target="_blank" rel="noopener">here</a> and <a href="https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies.html#policies_session/" target="_blank" rel="noopener">here</a>.</p>
+<p>Sessions are involved when using <code>AssumeRoleWithWebIdentity</code>. Read more <a href="https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_iam-quotas.html#reference_iam-quotas-entity-length" target="_blank" rel="noopener">here</a> and <a href="https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies.html#policies_session" target="_blank" rel="noopener">here</a>.</p>
 <p>Long story short (read official docs), if there&rsquo;s too much input during <code>AssumeRoleWithWebIdentity</code> it could fail due to <code>PackedPolicyTooLargeException</code>. In order to avoid this, here are aspects that can be controlled from a higher degree to a low degree:</p>
 <ul>
 <li>The number of GitHub Actions access token claims mapped.</li>
 <li>The tag names selected for the mapped claims.</li>
-<li>The size of the <a href="https://docs.github.com/en/actions/deployment/security-hardening-your-deployments/about-security-hardening-with-openid-connect#customizing-the-token-claims/" target="_blank" rel="noopener">customized</a> <code>sub</code> claim.</li>
+<li>The size of the <a href="https://docs.github.com/en/actions/deployment/security-hardening-your-deployments/about-security-hardening-with-openid-connect#customizing-the-token-claims" target="_blank" rel="noopener">customized</a> <code>sub</code> claim.</li>
 <li>Value of some claims.</li>
 </ul>
 <h4 id="packedpolicytoolargeexception">PackedPolicyTooLargeException</h4>
@@ -703,7 +771,7 @@ Note It&rsquo;s very important to limit which entities in GitHub Actions are all
 </span></span></code></pre></div><h3 id="managing-the-session-limit">Managing the Session Limit</h3>
 <ul>
 <li>Information included in <code>repository_owner</code> is already present in the <code>repository</code> claim. Skip mapping <code>repository_owner</code>.</li>
-<li>If using GitHub Enterprise, don&rsquo;t map the <code>enterprise</code> claim, instead <a href="https://docs.github.com/en/enterprise-cloud@latest/actions/deployment/security-hardening-your-deployments/about-security-hardening-with-openid-connect#customizing-the-issuer-value-for-an-enterprise/" target="_blank" rel="noopener">customize the issuer</a>.</li>
+<li>If using GitHub Enterprise, don&rsquo;t map the <code>enterprise</code> claim, instead <a href="https://docs.github.com/en/enterprise-cloud@latest/actions/deployment/security-hardening-your-deployments/about-security-hardening-with-openid-connect#customizing-the-issuer-value-for-an-enterprise" target="_blank" rel="noopener">customize the issuer</a>.</li>
 <li>Don&rsquo;t map the <code>workflow</code> claim as it&rsquo;s a string in the workflow file that can grow large.</li>
 <li>Abbreviate all tag names.
 <ul>
@@ -711,7 +779,7 @@ Note It&rsquo;s very important to limit which entities in GitHub Actions are all
 <li>Don&rsquo;t shorten tag names into acronyms or single character tag names as it makes it harder to use these tags in policies and cloudtrail logs.</li>
 </ul>
 </li>
-<li>Consider not <a href="https://docs.github.com/en/actions/deployment/security-hardening-your-deployments/about-security-hardening-with-openid-connect#customizing-the-token-claims/" target="_blank" rel="noopener">customizing</a> the <code>sub</code> claim.
+<li>Consider not <a href="https://docs.github.com/en/actions/deployment/security-hardening-your-deployments/about-security-hardening-with-openid-connect#customizing-the-token-claims" target="_blank" rel="noopener">customizing</a> the <code>sub</code> claim.
 <ul>
 <li>The reason for this is that the value of the <code>sub</code> claim is included in <code>cognito-identity.amazonaws.com:amr</code> which takes up space in the session.</li>
 <li>If using Cognito Identity in GitHub Actions while also requiring an existing AWS STS authentication integration to exist in parallell where the current <code>sub</code> claim has been customized and made &ldquo;large&rdquo;, then it will affect how many claims can be mapped.</li>
@@ -721,16 +789,16 @@ Note It&rsquo;s very important to limit which entities in GitHub Actions are all
 <li><code>job_workflow_ref</code> is more important than <code>workflow_ref</code>.</li>
 </ul>
 <p>If not having customized the <code>sub</code> claim, then it should be possible to map the following claim when using tag name abbreviations: <code>repository</code>, <code>environment</code>, <code>job_workflow_ref</code>, <code>actor</code>, <code>runner_environment</code>, <code>run_number</code>, <code>run_attempt</code>, <code>ref</code> and <code>sha</code>, granted names of organization, repositories and workflow filenames are&hellip; average(?).</p>
-<p>All available GitHub Actions claims can be viewed <a href="https://docs.github.com/en/actions/deployment/security-hardening-your-deployments/about-security-hardening-with-openid-connect#understanding-the-oidc-token/" target="_blank" rel="noopener">here</a>.</p>
+<p>All available GitHub Actions claims can be viewed <a href="https://docs.github.com/en/actions/deployment/security-hardening-your-deployments/about-security-hardening-with-openid-connect#understanding-the-oidc-token" target="_blank" rel="noopener">here</a>.</p>
 <h5 id="testing">Testing</h5>
 <p>It can be beneficial to test the limits out. Do so by creating a repo and workflow file both with long names and an Identity Pool for testing. When everything seems fine and all required claims fit, start adding more claims to see when the limit is hit.</p>
 <p>The goal is to have plenty of room to spare and never having to deal with <code>PackedPolicyTooLargeException</code>.</p>
 <h2 id="resources">Resources</h2>
 <h4 id="additional-aws-documentation">Additional AWS Documentation</h4>
 <ul>
-<li><a href="https://docs.aws.amazon.com/IAM/latest/UserGuide/tutorial_attribute-based-access-control.html/" target="_blank" rel="noopener">https://docs.aws.amazon.com/IAM/latest/UserGuide/tutorial_attribute-based-access-control.html</a></li>
-<li><a href="https://docs.aws.amazon.com/IAM/latest/UserGuide/introduction_attribute-based-access-control.html/" target="_blank" rel="noopener">https://docs.aws.amazon.com/IAM/latest/UserGuide/introduction_attribute-based-access-control.html</a></li>
-<li><a href="https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_create_for-idp_oidc.html#idp_oidc_Create_GitHub/" target="_blank" rel="noopener">https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_create_for-idp_oidc.html#idp_oidc_Create_GitHub</a></li>
+<li><a href="https://docs.aws.amazon.com/IAM/latest/UserGuide/tutorial_attribute-based-access-control.html" target="_blank" rel="noopener">https://docs.aws.amazon.com/IAM/latest/UserGuide/tutorial_attribute-based-access-control.html</a></li>
+<li><a href="https://docs.aws.amazon.com/IAM/latest/UserGuide/introduction_attribute-based-access-control.html" target="_blank" rel="noopener">https://docs.aws.amazon.com/IAM/latest/UserGuide/introduction_attribute-based-access-control.html</a></li>
+<li><a href="https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_create_for-idp_oidc.html#idp_oidc_Create_GitHub" target="_blank" rel="noopener">https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_create_for-idp_oidc.html#idp_oidc_Create_GitHub</a></li>
 </ul>
 
     </div>

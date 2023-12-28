@@ -4,7 +4,7 @@
     <title>Setup Amazon Cognito Identity for GitHub Actions - Enhanced AuthFlow // Catnekaise</title>
     <link rel="shortcut icon" href="/favicon.ico" />
     <meta charset="utf-8" />
-    <meta name="generator" content="Hugo 0.119.0">
+    <meta name="generator" content="Hugo 0.120.4">
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="author" content="catnekaise" />
     <meta name="description" content="" />
@@ -23,6 +23,7 @@ Note It&rsquo;s very important to limit which entities in GitHub Actions are all
 <meta property="og:url" content="https://catnekaise.github.io/github-actions-abac-aws/setup-using-aws-console/" /><meta property="article:section" content="github-actions-abac-aws" />
 <meta property="article:published_time" content="2023-10-24T00:00:00+00:00" />
 <meta property="article:modified_time" content="2023-10-24T00:00:00+00:00" />
+
 
 
   </head>
@@ -99,11 +100,11 @@ Note It&rsquo;s very important to limit which entities in GitHub Actions are all
 <p>It&rsquo;s <code>very important</code> to limit which entities in GitHub Actions are allowed to assume roles in your AWS Account(s). Misconfiguration in either <strong>AWS IAM Role trust policies</strong> or a <strong>Cognito Identity Pool</strong> could lead to every organization and user in GitHub being allowed access to your AWS resources from GitHub Actions.</p>
 <p><code>Try everything in a sandbox environment first.</code></p>
 <h3 id="prerequisite">Prerequisite</h3>
-<p>If the AWS Account does not already contain an AWS IAM OpenID Connect Identity Provider, follow this <a href="https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_providers_create_oidc.html/" target="_blank" rel="noopener">guide</a>. Choose <code>https://token.actions.githubusercontent.com</code> for URL and <code>cognito-identity.amazonaws.com</code> for <strong>Audience</strong>.</p>
+<p>If the AWS Account does not already contain an AWS IAM OpenID Connect Identity Provider, follow this <a href="https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_providers_create_oidc.html" target="_blank" rel="noopener">guide</a>. Choose <code>https://token.actions.githubusercontent.com</code> for URL and <code>cognito-identity.amazonaws.com</code> for <strong>Audience</strong>.</p>
 <p>If the AWS Account already contains an AWS IAM OpenID Connect Identity Provider, make sure <code>cognito-identity.amazonaws.com</code> is one of the audiences.</p>
 <h2 id="setup-identity-pool">Setup Identity Pool</h2>
 <ol>
-<li>Sign in to <a href="https://console.aws.amazon.com/cognito/home/" target="_blank" rel="noopener">https://console.aws.amazon.com/cognito/home</a> in your <strong>AWS sandbox account</strong> and select Identity Pools.
+<li>Sign in to <a href="https://console.aws.amazon.com/cognito/home" target="_blank" rel="noopener">https://console.aws.amazon.com/cognito/home</a> in your <strong>AWS sandbox account</strong> and select Identity Pools.
 <ul>
 <li>Make sure it&rsquo;s the new Cognito Console (mid-2023).</li>
 </ul>
@@ -276,8 +277,8 @@ Note It&rsquo;s very important to limit which entities in GitHub Actions are all
 </span></span></span><span style="display:flex;"><span><span style="color:#e6db74">          aws s3 cp info.text s3://${{ env.BUCKET_NAME }}/env/${{ github.repository }}/${{ inputs.environment }}/info.txt</span>          
 </span></span></code></pre></div><h4 id="using-github-enterprise">Using GitHub Enterprise?</h4>
 <p>Your enterprise owner may have restricted which actions can be used inside GitHub Actions for your enterprise/organization. This is fine as securing the supply chain is important.</p>
-<p>If you want to proceed, recommendation is that you either head over to <a href="https://github.com/catnekaise/cognito-idpool-auth/" target="_blank" rel="noopener">catnekaise/cognito-idpool-auth</a> and press the <code>use this template</code> button to create an action repository in your organization that you can use, or copy-paste the <code>action.yml</code> of the same repository into your test repository above.</p>
-<p>Whichever way you choose you should review the <code>action.yml</code> before you use it. Read more <a href="https://docs.github.com/en/actions/learn-github-actions/finding-and-customizing-actions#adding-an-action-from-the-same-repository/" target="_blank" rel="noopener">here</a> about how to use actions from within the same repository as the workflow.</p>
+<p>If you want to proceed, recommendation is that you either head over to <a href="https://github.com/catnekaise/cognito-idpool-auth" target="_blank" rel="noopener">catnekaise/cognito-idpool-auth</a> and press the <code>use this template</code> button to create an action repository in your organization that you can use, or copy-paste the <code>action.yml</code> of the same repository into your test repository above.</p>
+<p>Whichever way you choose you should review the <code>action.yml</code> before you use it. Read more <a href="https://docs.github.com/en/actions/learn-github-actions/finding-and-customizing-actions#adding-an-action-from-the-same-repository" target="_blank" rel="noopener">here</a> about how to use actions from within the same repository as the workflow.</p>
 <h2 id="continue-testing">Continue testing</h2>
 <p>The permissions given to the role will only allow this workflow to work with files at locations in the S3 Bucket that matches claims in the access token.</p>
 <ul>
@@ -306,7 +307,7 @@ Note It&rsquo;s very important to limit which entities in GitHub Actions are all
 <li>Delete the objects in the S3 Bucket and then delete the S3 Bucket.</li>
 </ol>
 <h2 id="next">Next</h2>
-<p>Have a look <a href=".//">here</a>.</p>
+<p>Have a look <a href="./">here</a>.</p>
 
     </div>
 

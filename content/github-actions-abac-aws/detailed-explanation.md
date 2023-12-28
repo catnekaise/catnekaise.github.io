@@ -2,6 +2,7 @@
 title = "GitHub Actions ABAC in AWS - Detailed Explanation"
 type = "page"
 date = 2023-10-24
+lastmod = 2023-12-28
 resource = "true"
 +++
 
@@ -145,19 +146,19 @@ Here are some example rules using claims and example values from the GitHub Acti
     "Claim": "sub",
     "MatchType": "StartsWith",
     "Value": "repo:catnekaise/example-repo:environment:dev",
-    "RoleARN": "arn:aws:iam::111111111111:role/cognito-gha-dev-role"
+    "RoleARN": "arn:aws:iam::111111111111:role/GhaCognitoDevRole"
   },
   {
     "Claim": "repository",
     "MatchType": "StartsWith",
     "Value": "catnekaise/infrastructure.",
-    "RoleARN": "arn:aws:iam::111111111111:role/cognito-gha-infra-role"
+    "RoleARN": "arn:aws:iam::111111111111:role/GhaCognitoInfraRole"
   },
   {
     "Claim": "repository_owner",
     "MatchType": "Equals",
     "Value": "catnekaise",
-    "RoleARN": "arn:aws:iam::111111111111:role/cognito-gha-role"
+    "RoleARN": "arn:aws:iam::111111111111:role/GhaCognito"
   }
 ]
 ```
@@ -209,13 +210,13 @@ If Cognito Identity issues an OIDC access token and this token is used in either
       "run_attempt": "1",
       "sha": "abcdef1234abcdef1234abcdef1234abcdef1234"
     },
-    "roleArn": "arn:aws:iam::111111111111:role/cognito-gha",
+    "roleArn": "arn:aws:iam::111111111111:role/GhaCognito",
     "roleSessionName": "CognitoIdentityCredentials"
   },
   "responseElement": {
     "subjectFromWebIdentityToken": "eu-west-1:11111111-example",
     "assumedRoleUser": {
-      "arn": "arn:aws:iam::111111111111:role/cognito-gha/CognitoIdentityCredentials"
+      "arn": "arn:aws:iam::111111111111:role/GhaCognito/CognitoIdentityCredentials"
     },
     "packedPolicySize": 47,
     "provider": "cognito-identity.amazonaws.com",
@@ -264,8 +265,11 @@ Below is the _default_ trust policy for a role that should be assumed using the 
 ### sts:TagSession
 As soon a single claim is mapped in an Identity Pool, `sts:TagSession` must be added as an `Action` in the trust policy. Failing to add this will result in failure to assume this role.
 
-### cognito-identity:GetCredentialsForIdentity
-This permission is attached to the role created when selecting `New IAM Role` during Identity Pool creation in the AWS Console. In the context of GitHub Actions getting credentials, the role does not need this permission.
+### Service-Linked Role
+
+- When using the AWS Console to create a Cognito Identity Pool and selecting `New IAM Role`, the role becomes service-linked and will have an ARN like `arn:aws:iam::111111111111:role/service-role/GhaCognito`.
+  - The service-linked role will be granted `cognito-identity:GetCredentialsForIdentity` for `*` resources. In the context of GitHub Actions getting credentials, the role does not need this permission.
+- It's not required that roles assumed via Cognito Identity exist under the role path service-roles.
 
 ### cognito-identity.amazonaws.com:amr
 > https://docs.aws.amazon.com/cognito/latest/developerguide/role-trust-and-permissions.html
@@ -356,13 +360,12 @@ In short, be mindful of resource tags attached to AWS IAM Roles when using ABAC.
 ## Role Chaining Reference
 > https://docs.aws.amazon.com/IAM/latest/UserGuide/id_session-tags.html#id_session-tags_role-chaining
 
+### Role Chaining - Trust a role
+
 - Include action `sts:TagSession` if intending to pass existing session tags.
-- If trusting `cognito-identity.amazonaws.com:aud` then setting `aws:FederatedProvider` is redundant.
-    - Specifying either of these is redundant if also specifying a principal that could only have been assumed via a single identity pool, but it may provide additional context when viewing the trust policy in isolation.
 - Use `aws:principalTag/tag_name` to require existing tag (claim) to have specified value.
 - Set `aws:requestTag/tag_name` to match `${aws:principalTag/tag_name}` to ensure that tags/claims are not changed when performing `AssumeRole` (if passing existing tags).
 - Use `aws:tagKeys` to restrict which session tags can be set.
-- Potentially use `sts:externalId` in combination with principal role permissions when doing cross-account assumptions.
 
 ```json
 {
@@ -371,7 +374,7 @@ In short, be mindful of resource tags attached to AWS IAM Roles when using ABAC.
     {
       "Effect": "Allow",
       "Principal": {
-        "AWS": "arn:aws:iam::111111111111:role/cognito-gha"
+        "AWS": "arn:aws:iam::111111111111:role/GhaCognito"
       },
       "Action": [
         "sts:AssumeRole",
@@ -379,23 +382,20 @@ In short, be mindful of resource tags attached to AWS IAM Roles when using ABAC.
       ],
       "Condition": {
         "StringEquals": {
-          "cognito-identity.amazonaws.com:aud": "eu-west-1:11111111-example",
-          "aws:FederatedProvider": "cognito-identity.amazonaws.com",
           "aws:principalTag/environment": "prod",
           "aws:requestTag/repository": "${aws:principalTag/repository}",
           "aws:requestTag/job_workflow_ref": "${aws:principalTag/job_workflow_ref}",
-          "aws:requestTag/environment": "${aws:principalTag/environment}",
-          "sts:externalId": "github-actions"
+          "aws:requestTag/environment": "${aws:principalTag/environment}"
         },
         "ForAllValues:StringEquals": {
-          "aws:tagKeys": [
+          "aws:TagKeys": [
             "repository",
             "environment",
             "job_workflow_ref"
           ]
         },
         "StringLike": {
-          "aws:principalTag/repository": [
+          "aws:PrincipalTag/repository": [
             "catnekaise/example.*"
           ]
         }
@@ -405,8 +405,7 @@ In short, be mindful of resource tags attached to AWS IAM Roles when using ABAC.
 }
 ```
 
-###### Principal Permissions
-The role (`arn:aws:iam::111111111111:role/cognito-gha`) will need permissions if assuming roles in other accounts. Below is a couple of examples, but you should have a look at [official documentation](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_common-scenarios.html) and figure out what best suits your architecture.
+#### Role Chaining - GhaCognito Permissions
 
 ```json
 {
@@ -419,22 +418,97 @@ The role (`arn:aws:iam::111111111111:role/cognito-gha`) will need permissions if
         "sts:TagSession"
       ],
       "Resource": [
-        "arn:aws:iam::222222222222:role/chained-gha-role"
+        "arn:aws:iam::222222222222:role/WorkloadRole"
       ]
-    },
+    }
+  ]
+}
+```
+
+### Role Chaining - Trust an Entrypoint Account
+Use this to trust that a specific entrypoint account have correctly authenticated users via a Cognito Identity Pool.
+
+- Include action `sts:TagSession` if intending to pass existing session tags.
+- Use `aws:principalTag/tag_name` to require existing tag (claim) to have specified value.
+- Set `aws:requestTag/tag_name` to match `${aws:principalTag/tag_name}` to ensure that tags/claims are not changed when performing `AssumeRole` (if passing existing tags).
+- Use `aws:tagKeys` to restrict which session tags can be set.
+
+```json5
+{
+  "Version": "2012-10-17",
+  "Statement": [
     {
       "Effect": "Allow",
+      "Principal": {
+        "AWS": "arn:aws:iam::111111111111:root"
+      },
       "Action": [
         "sts:AssumeRole",
         "sts:TagSession"
       ],
-      "Resource": [
-        "*"
-      ],
       "Condition": {
         "StringEquals": {
-          "sts:externalId": "github-actions",
-          "aws:PrincipalOrgID": "o-example"
+          // Crucial that the account 111111111111 only uses Cognito Identity for GitHub Actions OIDC and nothing else
+          "aws:FederatedProvider": "cognito-identity.amazonaws.com",
+          "aws:PrincipalTag/environment": "prod",
+          "aws:RequestTag/repository": "${aws:principalTag/repository}",
+          "aws:RequestTag/job_workflow_ref": "${aws:principalTag/job_workflow_ref}",
+          "aws:RequestTag/environment": "${aws:principalTag/environment}"
+        },
+        "ForAllValues:StringEquals": {
+          "aws:TagKeys": [
+            "repository",
+            "environment",
+            "job_workflow_ref"
+          ]
+        },
+        "StringLike": {
+          "aws:PrincipalTag/repository": [
+            "catnekaise/example.*"
+          ]
+        }
+      }
+    }
+  ]
+}
+```
+
+##### Role Chaining - Alternative for Permissions
+Granting the permissions below to roles in an entrypoint account makes it so that no changes are required when additional workload accounts are integrated. The conditions are used so prevent other roles that trusts the same entrypoint account from being assumable.
+
+```json5
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      // Include when passing claims
+      "Effect": "Allow",
+      "Action": "sts:TagSession",
+      "Resource": "*"
+    },
+    {
+      "Effect": "Allow",
+      "Action": "sts:AssumeRole",
+      // Role Path to limit assuming roles to those under this path
+      "Resource": "arn:aws:iam::*:role/github-actions/*",
+      "Condition": {
+        "StringEquals": {
+          // ResourceTag to limit that roles being assumed have this tag
+          "aws:ResourceTag/tag1": "someValue",
+          // Shall not be able to assume roles in a different organization
+          "aws:ResourceOrgID": "o-example"
+        },
+        "StringNotEquals": {
+          // Shall not be allowed to assume roles in these accounts
+          "aws:ResourceAccount": [
+            "111111111111"
+          ]
+        },
+        "ForAnyValue:StringLike": {
+          // Optionally limit to accounts in organization path(s) below
+          "aws:ResourceOrgPaths": [
+            "o-example/r-ab12/ou-ab12-11111111/*"
+          ]
         }
       }
     }
@@ -525,7 +599,7 @@ The `sub` claim is added as a suffix on identity provider arn in `cognito-identi
     {
       "Effect": "Deny",
       "NotPrincipal": {
-        "AWS": "arn:aws:iam::111111111111:role/cognito-gha"
+        "AWS": "arn:aws:iam::111111111111:role/GhaCognito"
       },
       "Action": [
         "s3:PutObject"
