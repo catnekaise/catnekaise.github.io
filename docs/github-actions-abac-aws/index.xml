@@ -13,9 +13,8 @@
       <link>https://catnekaise.github.io/github-actions-abac-aws/cognito-identity/</link>
       <pubDate>Tue, 24 Oct 2023 00:00:00 +0000</pubDate>
       <guid>https://catnekaise.github.io/github-actions-abac-aws/cognito-identity/</guid>
-      <description>We&amp;rsquo;ll look at how most authentication with AWS from GitHub Actions is accomplished today and how it compares to using Cognito Identity.
-GitHub Actions OIDC Access Token When we authenticate with AWS STS using the GitHub Actions OIDC Access Token as illustrated here, we do it with an access token having claims similar to below. (Full access token can be viewed here.)
-{ &amp;#34;sub&amp;#34;: &amp;#34;repo:catnekaise/example-repo:environment:dev&amp;#34;, &amp;#34;aud&amp;#34;: &amp;#34;sts.amazonaws.com&amp;#34;, &amp;#34;environment&amp;#34;: &amp;#34;dev&amp;#34;, &amp;#34;ref&amp;#34;: &amp;#34;refs/heads/main&amp;#34;, &amp;#34;sha&amp;#34;: &amp;#34;example-sha&amp;#34;, &amp;#34;repository&amp;#34;: &amp;#34;catnekaise/example-repo&amp;#34;, &amp;#34;repository_owner&amp;#34;: &amp;#34;catnekaise&amp;#34;, &amp;#34;repository_visibility&amp;#34;: &amp;#34;private&amp;#34;, &amp;#34;repository_id&amp;#34;: &amp;#34;2&amp;#34;, &amp;#34;run_id&amp;#34;: &amp;#34;example-run-id&amp;#34;, &amp;#34;run_number&amp;#34;: &amp;#34;4&amp;#34;, &amp;#34;runner_environment&amp;#34;: &amp;#34;github-hosted&amp;#34;, &amp;#34;actor&amp;#34;: &amp;#34;djonser&amp;#34;, &amp;#34;event_name&amp;#34;: &amp;#34;workflow_dispatch&amp;#34;, &amp;#34;ref_type&amp;#34;: &amp;#34;branch&amp;#34;, &amp;#34;job_workflow_ref&amp;#34;: &amp;#34;catnekaise/example-repo/.</description>
+      <description>This article compares authentication from GitHub Actions to AWS using the standard way passing the GitHub Actions OIDC Access Token to AWS STS compared to passing the same token to AWS Cognito Identity.
+GitHub Actions OIDC Access Token When we authenticate with AWS STS using the GitHub Actions OIDC Access Token as explained here, we do it with a token having claims similar to below. (Example of full access token here.</description>
     </item>
     <item>
       <title>GitHub Actions ABAC in AWS - Detailed Explanation</title>
