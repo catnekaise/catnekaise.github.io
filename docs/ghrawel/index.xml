@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Ghrawels on Catnekaise</title>
+    <link>https://catnekaise.github.io/ghrawel/</link>
+    <description>Recent content in Ghrawels on Catnekaise</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>en-us</language>
+    <lastBuildDate>Sun, 03 Mar 2024 00:00:00 +0000</lastBuildDate>
+    <atom:link href="https://catnekaise.github.io/ghrawel/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>Developer Notes</title>
+      <link>https://catnekaise.github.io/ghrawel/developer-notes/</link>
+      <pubDate>Sun, 03 Mar 2024 00:00:00 +0000</pubDate>
+      <guid>https://catnekaise.github.io/ghrawel/developer-notes/</guid>
+      <description>ghrawel, because naming is hard.&#xA;My motivation for creating this was partially because of the cancelled feature service-tokens (temporary GitHub access tokens should be much easier than what it is today) and to explore if a cdk library can be viable when an application is required.&#xA;Hopefully documentation in catnekaise/ghrawel should answer most questions. If any issues please post an issue in that repository.</description>
+    </item>
+  </channel>
+</rss>

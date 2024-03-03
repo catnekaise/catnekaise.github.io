@@ -4,15 +4,14 @@
     <title>Setup Amazon Cognito Identity for GitHub Actions - Enhanced AuthFlow // Catnekaise</title>
     <link rel="shortcut icon" href="/favicon.ico" />
     <meta charset="utf-8" />
-    <meta name="generator" content="Hugo 0.120.4">
+    <meta name="generator" content="Hugo 0.123.2">
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="author" content="catnekaise" />
     <meta name="description" content="" />
     <link rel="stylesheet" href="/css/main.min.3274177d1a6c0186a7c2df5e3aa4887327383e4ec3756eaab53a0b7ec303569f.css" />
 
     
-    <meta name="twitter:card" content="summary"/>
-<meta name="twitter:title" content="Setup Amazon Cognito Identity for GitHub Actions - Enhanced AuthFlow"/>
+    <meta name="twitter:card" content="summary"/><meta name="twitter:title" content="Setup Amazon Cognito Identity for GitHub Actions - Enhanced AuthFlow"/>
 <meta name="twitter:description" content="This guide will create an Amazon Cognito Identity Pool that allows GitHub Actions to authenticate using OpenID Connect. We&rsquo;ll be using the Enhanched (Simplified) AuthFlow. We will also create a S3 Bucket so that we can test the attribute-based access control (ABAC) from the GitHub Actions workflow.
 Note It&rsquo;s very important to limit which entities in GitHub Actions are allowed to assume roles in your AWS Account(s). Misconfiguration in either AWS IAM Role trust policies or a Cognito Identity Pool could lead to every organization and user in GitHub being allowed access to your AWS resources from GitHub Actions."/>
 
